@@ -1,6 +1,6 @@
 # DBD-Discord-Bot
 
-This repo contains a Discord bot written in Python that get user stats and other information for the game Dead by Daylight from the [Steam API](https://steamcommunity.com/dev) and the [DBD Playerstats API](https://dbd.tricky.lol/).
+This repo contains a Discord bot written in Python that gets user stats and other information for the game Dead by Daylight from the [Steam API](https://steamcommunity.com/dev) and the [DBD Playerstats API](https://dbd.tricky.lol/).
 
 It is based on [`discord-bot-lambda`](https://github.com/pixegami/discord-bot-lambda) created by [Pixegami](https://github.com/pixegami/) on Github.
 
@@ -18,8 +18,9 @@ The bot's commands are outlined in the `discord_commands.yaml` file in the `/com
 /killerstats - Looks up Dead by Daylight Killer statistics, like: # of survivors hooked, # of survivors killed. Usage: /killerstats <SteamID>.
 /killercharacterstats - Looks up character-specific stats as kille. Usage: /killercharacterstats <SteamID>
 ```
-Steam requires a users SteamID to look up their player stats. No one can look up someone else's SteamID, so this functionality only works if a user provides their own SteamID. Your SteamID is a unique identifier that's 17 numbers long and different than your username. To look up your SteamID, open Steam, click your username in the upper right hand side of the application, select 'Account Details'. Your Steam ID is below your username.\n"
-Important:** Your Steam Profile & Game details must be set to public to get your information from the Steam API. To set your profile to public, open your profile in Steam and click \"Edit Profile\", then set \"My profile\" and \"Game details\" to Public ([Click here for examples of how to look up your SteamID and set your profile to public](https://imgur.com/a/Xw3KbJ5))."
+Steam requires a users SteamID to look up their player stats. No one can look up someone else's SteamID, so these commands only work if a user provides a SteamID with the request. Your SteamID is a unique identifier that's 17 numbers long and different than your username. To look up your SteamID, open Steam, click your username in the upper right hand side of the application, select `Account Details``. Your Steam ID is below your username.
+
+Also, your Steam Profile & Game details must be set to public to get your information from the Steam API. To set your profile to public, open your profile in Steam and click `Edit Profile`, then set `My profile` and `Game details` to Public ([Click here for examples of how to look up your SteamID and set your profile to public](https://imgur.com/a/Xw3KbJ5))."
 
 Example of the /stats command:
 ![/stats](lUi2DwE.png)
@@ -35,11 +36,13 @@ You can add the current version of the bot to your Discord server by [clicking t
 
 ### Discord
 
-This bot uses the [Discord Interactions Endpoint](https://discord.com/developers/docs/interactions/application-commands). All interactions with the bot require a user to first interact. This bot cannot do anything without a user first interacting with it.
+This bot uses the [Discord Interactions Endpoint](https://discord.com/developers/docs/interactions/application-commands). All interactions with the bot require a user to interact with the bot first. This bot cannot do anything without a user first interacting with it.
 
 ### Modifying the Bot
 
-To deploy this bot to your own account, you'll need a [Steam API key](https://steamcommunity.com/dev), and your own [Discord Application](https://discord.com/developers/applications). After that, you'll need to clone this repo and create a file named `config.json` in the root of the project and populate it with a couple of configuration values:
+To modify this bot, you'll need a [Steam API key](https://steamcommunity.com/dev), your own [Discord Application](https://discord.com/developers/applications), and [an AWS account](https://aws.amazon.com).
+
+Once you have all those, you'll need to clone this repo and create a file named `config.json` in the root of the project and populate it with a couple of configuration values:
 ```
 {
     "DISCORD_PUBLIC_KEY": "DISCORD PUBLIC KEY GOES HERE", # This is the public key of your Discord application
