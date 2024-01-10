@@ -23,7 +23,7 @@ Steam requires a users SteamID to look up their player stats. No one can look up
 Also, your Steam Profile & Game details must be set to public to get your information from the Steam API. To set your profile to public, open your profile in Steam and click `Edit Profile`, then set `My profile` and `Game details` to Public ([Click here for examples of how to look up your SteamID and set your profile to public](https://imgur.com/a/Xw3KbJ5))."
 
 Example of the /stats command:
-![/stats](lUi2DwE.png)
+![/stats](https://i.imgur.com/lUi2DwE.png)
 
 Example of the /shrine command:
 ![/shrine](https://i.imgur.com/VhQkOWN.png)

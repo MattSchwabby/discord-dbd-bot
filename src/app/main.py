@@ -492,10 +492,6 @@ def interact(raw_request):
                 perkresponse=requests.get(thisperkurl)
                 thisperkinfo = perkresponse.json()
                 this_shrine_perk=shrineperk(name=thisperkinfo["name"], description=thisperkinfo["description"], bloodpointcost=perk["bloodpoints"], shardcost=perk["shards"])
-                #print(this_shrine_perk.name)
-                #print(this_shrine_perk.description)
-                #print(this_shrine_perk.bloodpointcost)
-                #print(this_shrine_perk.shardcost)
                 result_string+=f"**{this_shrine_perk.name}** \n Bloodpoint cost: **{this_shrine_perk.bloodpointcost}** \n Shard cost: **{this_shrine_perk.shardcost}** \n Perk ID: **{thisperk}** *Perk ID can be used to look up the perk's description using the **/perk {thisperk}** command* \n"
             print(f"Log from main.py - Discord user {username} requested current shrine perks. message_content: ")
             print(result_string)

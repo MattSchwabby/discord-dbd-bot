@@ -49,7 +49,6 @@ def get_dbd_player_stats(api_key, user_id, stat_name):
                 # Search for the DBD_Escape stat in the player stats
                 for stat in data["playerstats"]["stats"]:
                     
-                
                 # If the stat is not found, return None
                 return None
             else:
@@ -72,24 +71,16 @@ def handler(event, context):
     response = table.scan()
     items = response.get('Items', [])
 
-    # Loop through each item and call Steam API
     for item in items:
         steam_user_id = item.get('SteamUserID')
         
-        # Call Steam API URL
         steam_api_url = f"http://api.steampowered.com/ISteamUserStats/GetUserStatsForGame/v0002/?key={steam_api_key}&steamids={steam_user_id}"
         
         try:
-            # Make API request
             api_response = requests.get(steam_api_url)
             api_data = api_response.json()
 
-            # Process the API response
-            # Example: Print the API data
             print(f"SteamUserID: {steam_user_id}, API Response: {api_data}")
-
-            # Additional processing based on API response
-            # ...
 
         except Exception as e:
             print(f"Error calling Steam API for SteamUserID {steam_user_id}: {e}")
