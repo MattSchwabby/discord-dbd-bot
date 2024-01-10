@@ -1,0 +1,15 @@
+*.js
+!jest.config.js
+*.d.ts
+node_modules
+.env
+commands/discordsecrets.py
+config.json
+OLDstat_table_update.py
+pythonDBDAPITest.py
+ShrineTest.py
+PerkTest.py
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out

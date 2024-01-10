@@ -1,0 +1,56 @@
+- name: hello
+  description: Say hello!
+
+- name: help
+  description: Returns information about how to use spooky-bot.
+
+- name: shrine
+  description: Get the current perks available in the Shrine of Secrets.
+
+- name: perk
+  description: Get the description for a perk.
+  options:
+    - name: perk
+      description: Get the description for a perk.
+      type: 3 # string
+      required: true
+
+- name: stats
+  description: Gets overall statistics as killer and survivor (requires Steam AccountID).
+  options:
+    - name: stats
+      description: The AccountID to send to Steam for Killer statistics.
+      type: 3 # string
+      required: true
+
+- name: survivorstats
+  description: Get survivor statistics (requires Steam AccountID).
+  options: 
+    - name: survivorstats
+      description: The AccountID to send to Steam for Survivor statistics.
+      type: 3 # string
+      required: true
+  
+- name: survivormapstats
+  description: Get map-specific survivor statistics (requires Steam AccountID).
+  options: 
+    - name: survivormapstats
+      description: The AccountID to send to Steam for Survivor statistics.
+      type: 3 # string
+      required: true
+
+- name: killerstats
+  description: Get killer statistics (requires Steam AccountID).
+  options:
+    - name: killerstats
+      description: The AccountID to send to Steam for Killer statistics.
+      type: 3 # string
+      required: true
+
+- name: killercharacterstats
+  description: Get killer statistics as specific characters (requires Steam AccountID).
+  options:
+    - name: killercharacterstats
+      description: The AccountID to send to Steam for Killer statistics.
+      type: 3 # string
+      required: true
