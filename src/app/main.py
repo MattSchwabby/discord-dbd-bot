@@ -5,15 +5,17 @@ from mangum import Mangum
 from asgiref.wsgi import WsgiToAsgi
 from discord_interactions import verify_key_decorator
 import requests
-import datetime
+from datetime import datetime
 import re
 
 # Variables
 steamapikey = os.environ['steamapikey']
 DISCORD_PUBLIC_KEY = os.environ['DISCORD_PUBLIC_KEY']
-dynamodb_table_name = os.environ['DYNAMODB_TABLE_NAME']
+dynamodb_table_name = os.environ['USER_CACHE_TABLE']
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(dynamodb_table_name)
+PERK_CACHE_TABLE = os.environ['PERK_CACHE_TABLE']
+perk_cache = dynamodb.Table(PERK_CACHE_TABLE)
 
 # Class Definitions
 class shrineperk:
@@ -331,16 +333,17 @@ def interact(raw_request):
                 message_content = "SteamID must be a number with no spaces. To learn how to find your SteamID, type the **/help** command."
             elif steamuserid.isnumeric():
                 steamusername=get_steam_username(steamapikey, steamuserid)
-                message_content = f"Steam username for SteamID {steamuserid} is {steamusername}"
+                message_content = f"Steam username for SteamID {steamuserid} is {steamusername}"                    
+                today = datetime.now()
+                # Get current ISO 8601 datetime in string format
+                iso_date = today.isoformat()
                 print(f"Log from local desktop - SteamID is {steamuserid}, username is {steamusername}, message_content is:")
                 print(message_content)
                 item = {
                 'SteamUserID': int(steamuserid),
                 'SteamUserName': steamusername,
                 'DiscordUserID': message_sender,
-                'DiscordUserName': username,
-                'DiscordGlobalName': globalname,
-                'lastUpdated': datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')  # Format timestamp as desired
+                'lastUpdated': iso_date
             }
                 table.put_item(Item=item)
             else:
@@ -353,13 +356,14 @@ def interact(raw_request):
                 message_content = "SteamID must be a number with no spaces. To learn how to find your SteamID, type the **/help** command."
             elif steamuserid.isnumeric():
                 steamusername=get_steam_username(steamapikey, steamuserid)
+                today = datetime.now()
+                # Get current ISO 8601 datetime in string format
+                iso_date = today.isoformat()
                 item = {
                     'SteamUserID': int(steamuserid),
                     'SteamUserName': steamusername,
                     'DiscordUserID': message_sender,
-                    'DiscordUserName': username,
-                    'DiscordGlobalName': globalname,
-                    'lastUpdated': datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')  # Format timestamp as desired
+                    'lastUpdated': iso_date
                 }
                 table.put_item(Item=item)
                 result_string=f"Survivor stats for Steam Username **{steamusername}** requested by **@{username}** *(User ID: {steamuserid}*): \n"
@@ -380,13 +384,14 @@ def interact(raw_request):
                 message_content = "SteamID must be a number with no spaces. To learn how to find your SteamID, type the **/help** command."
             elif steamuserid.isnumeric():
                 steamusername=get_steam_username(steamapikey, steamuserid)
+                today = datetime.now()
+                # Get current ISO 8601 datetime in string format
+                iso_date = today.isoformat()
                 item = {
                     'SteamUserID': int(steamuserid),
                     'SteamUserName': steamusername,
                     'DiscordUserID': message_sender,
-                    'DiscordUserName': username,
-                    'DiscordGlobalName': globalname,
-                    'lastUpdated': datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')  # Format timestamp as desired
+                    'lastUpdated': iso_date
                 }
                 table.put_item(Item=item)
                 result_string=f"Survivor stats for Steam Username **{steamusername}** requested by **@{username}** *(User ID: {steamuserid})*: \n"
@@ -407,13 +412,14 @@ def interact(raw_request):
                 message_content = "SteamID must be a number with no spaces. To learn how to find your SteamID, type the **/help** command."
             elif steamuserid.isnumeric():
                 steamusername=get_steam_username(steamapikey, steamuserid)
+                today = datetime.now()
+                # Get current ISO 8601 datetime in string format
+                iso_date = today.isoformat()
                 item = {
                     'SteamUserID': int(steamuserid),
                     'SteamUserName': steamusername,
                     'DiscordUserID': message_sender,
-                    'DiscordUserName': username,
-                    'DiscordGlobalName': globalname,
-                    'lastUpdated': datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')  # Format timestamp as desired
+                    'lastUpdated': iso_date
                 }
                 table.put_item(Item=item)
                 result_string=f"Killer stats for Steam Username **{steamusername}** requested by **@{username}** (User ID: {steamuserid}): \n"
@@ -434,13 +440,14 @@ def interact(raw_request):
                 message_content = "SteamID must be a number with no spaces. To learn how to find your SteamID, type the **/help** command."
             elif steamuserid.isnumeric():
                 steamusername=get_steam_username(steamapikey, steamuserid)
+                today = datetime.now()
+                # Get current ISO 8601 datetime in string format
+                iso_date = today.isoformat()
                 item = {
                     'SteamUserID': int(steamuserid),
                     'SteamUserName': steamusername,
                     'DiscordUserID': message_sender,
-                    'DiscordUserName': username,
-                    'DiscordGlobalName': globalname,
-                    'lastUpdated': datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')  # Format timestamp as desired
+                    'lastUpdated': iso_date
                 }
                 table.put_item(Item=item)
                 result_string=f"Killer stats for Steam Username **{steamusername}** requested by **@{username}** *(User ID: {steamuserid})*: \n"
@@ -461,13 +468,14 @@ def interact(raw_request):
                 message_content = "SteamID must be a number with no spaces. To learn how to find your SteamID, type the **/help** command."
             elif steamuserid.isnumeric():
                 steamusername=get_steam_username(steamapikey, steamuserid)
+                today = datetime.now()
+                # Get current ISO 8601 datetime in string format
+                iso_date = today.isoformat()
                 item = {
                     'SteamUserID': int(steamuserid),
                     'SteamUserName': steamusername,
                     'DiscordUserID': message_sender,
-                    'DiscordUserName': username,
-                    'DiscordGlobalName': globalname,
-                    'lastUpdated': datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')  # Format timestamp as desired
+                    'lastUpdated': iso_date
                 }
                 table.put_item(Item=item)
                 result_string=f"Overall stats for Steam Username **{steamusername}** requested by **@{username}** *(User ID: {steamuserid}*): \n"

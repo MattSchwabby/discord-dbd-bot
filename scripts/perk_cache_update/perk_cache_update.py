@@ -2,38 +2,31 @@ import json
 import requests
 import boto3
 import os
-
+import time
 api_url = 'https://dbd.tricky.lol/api/perks'
+perk_url = 'https://dbd.tricky.lol/api/perkinfo'
 
 # DynamoDB configuration
 dynamodb = boto3.resource('dynamodb') 
-table_name = os.environ.get('DYNAMODB_TABLE_NAME')  # Get DynamoDB table name from environment variable
+table_name="dbdPerkCache"
 table = dynamodb.Table(table_name)
 
 def get_perks_data():
     response = requests.get(api_url)
     return response.json()
 
-def lambda_handler(event, context):
-    perks_data = get_perks_data()
+perks_data = get_perks_data()
 
-    if 'error' in perks_data:
-        return {
-            'statusCode': 500,
-            'body': json.dumps({'error': perks_data['error']})
-        }
-    else:
-        store_in_dynamodb(perks_data)
-        return {
-            'statusCode': 200,
-            'body': json.dumps({'message': 'Data stored in DynamoDB successfully!'})
-        }
-
-def store_in_dynamodb(data):
-    for perk in data:
-        item = {
-            'perk_id': perk['id'],
-            'name': perk['name'],
-            # Add other fields as needed
-        }
+for perk in perks_data.keys():
+    name=perks_data[perk]['name']
+    item = {
+    'perk_id': perk,
+    'name': name,
+    }
+    try:
         table.put_item(Item=item)
+        print(f"Wrote item {item} to Dynamo")
+    except Exception as write_e:
+        print(f"Error writing item {item}: {write_e}")
+
+

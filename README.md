@@ -28,6 +28,12 @@ Example of the /stats command:
 Example of the /shrine command:
 ![/shrine](https://i.imgur.com/VhQkOWN.png)
 
+#### Functionality In Development
+
+You'll notice that the CDK app deploys some DynamoDB tables, cloudwatch event bridge rules, and two Lambda functions that don't appear to be related to the Discord functionality. This is for two reasons:
+1 - I'm working on an update to the /perk command which will allow users to search for perks using their name instead of their PerkID.
+2 - I'm working on functionality that will track the stats of each user that has interacted with the bot over time. I plan on building leaderboard-style functionality where the bot will post in a channel about who gained the most points in a particular stat or stats each week.
+
 #### Using the Bot
 
 You can add the current version of the bot to your Discord server by [clicking this link](https://discord.com/api/oauth2/authorize?client_id=1065388537949720596&permissions=1085016635456&scope=bot) and then choosing your desired server in the drop down list.

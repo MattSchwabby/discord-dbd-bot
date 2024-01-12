@@ -18,12 +18,14 @@ export class DiscordBotLambdaStack extends cdk.Stack {
     const userCacheTable = new dynamodb.Table(this, 'SteamIDCache', {
       partitionKey: { name: 'SteamUserID', type: dynamodb.AttributeType.NUMBER },
       tableName: 'SteamIDCache',
+      sortKey: { name: 'date', type: dynamodb.AttributeType.STRING },
       removalPolicy: cdk.RemovalPolicy.DESTROY, // WARNING: This will delete the table and all data when the stack is deleted
     });
 
-    const userStatTable = new dynamodb.Table(this, 'usterStatCache', {
+    const userStatTable = new dynamodb.Table(this, 'userStatCache', {
       partitionKey: { name: 'SteamUserID', type: dynamodb.AttributeType.NUMBER },
-      tableName: 'usterStatCache',
+      sortKey: { name: 'date', type: dynamodb.AttributeType.STRING },
+      tableName: 'userStatCache',
       removalPolicy: cdk.RemovalPolicy.DESTROY, // WARNING: This will delete the table and all data when the stack is deleted
     });
 
@@ -45,7 +47,8 @@ export class DiscordBotLambdaStack extends cdk.Stack {
         architecture: lambda.Architecture.X86_64,
         environment: {
           DISCORD_PUBLIC_KEY: discordPublicKey,
-          DYNAMODB_TABLE_NAME: userCacheTable.tableName,
+          USER_CACHE_TABLE: userCacheTable.tableName,
+          PERK_CACHE_TABLE: perkTable.tableName,
           steamapikey: steamapikey
         },
       }
@@ -72,8 +75,8 @@ export class DiscordBotLambdaStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(15),
       environment: {
         DISCORD_PUBLIC_KEY: discordPublicKey,
-        DYNAMODB_TABLE_NAME: userCacheTable.tableName,
-        STAT_TABLE_NAME: userStatTable.tableName,
+        USER_STAT_TABLE: userStatTable.tableName,
+        USER_CACHE_TABLE: userCacheTable.tableName,
         steamapikey: steamapikey
       },
     });
@@ -96,13 +99,13 @@ export class DiscordBotLambdaStack extends cdk.Stack {
 
     // CloudWatch Event Rules
     const statTableEventRule = new events.Rule(this, 'statTableEventRule', {
-      schedule: events.Schedule.cron({ minute: '0', hour: '2', weekDay: 'SUN-SAT' }), // Trigger every day at 2:00 AM Pacific Time
+      schedule: events.Schedule.cron({ minute: '0', hour: '10', weekDay: 'SUN-SAT' }), // Trigger every day at 2:00 AM Pacific Time
     });
 
     statTableEventRule.addTarget(new targets.LambdaFunction(statTableUpdater));
 
     const perkCacheEventRule = new events.Rule(this, 'perkCacheEventRule', {
-      schedule: events.Schedule.cron({ minute: '0', hour: '4', weekDay: 'SUN-SAT' }), // Trigger every day at 4:00 AM Pacific Time
+      schedule: events.Schedule.cron({ minute: '0', hour: '12', weekDay: 'SUN-SAT' }), // Trigger every day at 4:00 AM Pacific Time
     });
   
     perkCacheEventRule.addTarget(new targets.LambdaFunction(perkCacheUpdater));
