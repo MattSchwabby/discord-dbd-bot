@@ -1,5 +1,7 @@
 import os
 import boto3
+import botocore
+#from botocore.vendored import requests
 import requests
 from datetime import datetime
 from decimal import Decimal
@@ -100,3 +102,15 @@ def handler(event, context):
         'statusCode': 200,
         'body': 'Function executed successfully!'
 }
+
+'''
+test_event = {
+    "key1": "value1",
+    "key2": "value2",
+    "key3": "value3"
+}
+
+context="testing handler()"
+
+handler(test_event, context)
+'''

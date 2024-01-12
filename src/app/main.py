@@ -1,5 +1,6 @@
 import os
 import boto3
+from boto3.dynamodb.conditions import Key
 from flask import Flask, jsonify, request
 from mangum import Mangum
 from asgiref.wsgi import WsgiToAsgi
@@ -7,6 +8,7 @@ from discord_interactions import verify_key_decorator
 import requests
 from datetime import datetime
 import re
+import time
 
 # Variables
 steamapikey = os.environ['steamapikey']
@@ -45,6 +47,43 @@ def get_steam_username(api_key, user_id):
     except Exception as e:
         print(f"Error: {e}")
         return None
+    
+def get_latest_steam_userid_dynamo(table_name,steam_user_name):
+    table = dynamodb.Table(table_name)
+    key_condition_expression = Key('SteamUserName').eq(steam_user_name)
+    index_name = 'SteamUserNameIndex'
+    response = table.query(
+        IndexName=index_name,
+        KeyConditionExpression=key_condition_expression,
+        ScanIndexForward=False,
+        Limit=1  # Limit the result to only one item
+    )
+    if 'Items' in response and len(response['Items']) > 0:
+        # The latest item
+        latest_item = response['Items'][0]
+
+        # Retrieve the SteamUserName from the latest item
+        steam_user_id = latest_item.get('SteamUserID')
+
+    return steam_user_id
+
+def get_perkid_by_name(table_name,perk_name):
+    perk_cache_table = dynamodb.Table(table_name)
+    key_condition_expression = Key('name').eq(perk_name)
+    index_name = 'PerkNameIndex'
+    response = perk_cache_table.query(
+        IndexName=index_name,
+        KeyConditionExpression=key_condition_expression,
+        Limit=1  # Limit the result to only one item
+    )
+    if 'Items' in response and len(response['Items']) > 0:
+        # The latest item
+        dynamo_response = response['Items'][0]
+
+        # Retrieve the SteamUserName from the latest item
+        perk_id = dynamo_response.get('perk_id')
+
+    return perk_id
 
 # DBD Stat API from Steam
 def get_dbd_player_stats(api_key, user_id, stat_name):
@@ -102,10 +141,12 @@ def replace_numbers_in_description(json_data):
     tunables = json_data["tunables"]
 
     for index, values in enumerate(tunables):
-        for value in values:
-            placeholder = "{" + str(index) + "}"
-            replacement = "**" + value + "**"
-            description = description.replace(placeholder, replacement)
+        placeholder = "{" + str(index) + "}"
+        if len(values) == 1:
+            replacement = "**" + values[0] + "**"
+        else:
+            replacement = ", ".join(f"**{v}**" for v in values)
+        description = description.replace(placeholder, replacement)
 
     json_data["description"] = description
     return json_data
@@ -119,6 +160,9 @@ def replace_html_tags(input_string):
     
     # Replace <br> with \n
     result_string = result_string.replace('<br>', '\n')
+
+    # Replace <br><br> with \n
+    result_string = result_string.replace('<br><br>', '\n')
     
     # Remove <ul> and </ul>
     result_string = result_string.replace('<ul>', '').replace('</ul>', '').replace('</li>', '')
@@ -127,6 +171,24 @@ def replace_html_tags(input_string):
     result_string = result_string.replace('<li>', ' - ')
     
     return result_string
+
+def scan_table_and_filter_latest_items(table_name):
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table(table_name)
+    response = table.scan()
+    latest_items = {}
+    for item in response['Items']:
+        steam_user_id = item['SteamUserID']
+        steam_user_name = item['SteamUserName']
+        date = item['lastUpdated']
+        if steam_user_name in latest_items:
+            if datetime.fromisoformat(date) > datetime.fromisoformat(latest_items[steam_user_name]['lastUpdated']):
+                latest_items[steam_user_name] = item
+        else:
+            latest_items[steam_user_name] = item
+    result = list(latest_items.values())
+    return result
+
           
 # DBD Stat Description Dictionary
 descriptors = {
@@ -315,16 +377,16 @@ def interact(raw_request):
         if command_name == "hello":
             message_content = "Hello there!"
         elif command_name == "help":
-            message_content = "I'm Spooky Bot. I'll look up your Dead By Daylight stats from Steam using your SteamID. Here are my commands:\n\n"
-            message_content += "**/shrine** - Looks up the current perks in the Shrine of Secrets and their cost *(doesn't require SteamID.)* \nUsage: **/shrine**\n"
-            message_content += "**/perk** - Looks up the description for a given perk ID. *Meant to be used after getting a Perk ID from **/shrine***\nUsage: **/perk** <Perk ID>"
-            message_content += "**/stats** - Looks up overall Dead by Daylight stastics, like number of matches escaped as a survivor and number of survivors sacrificed as killer.\nUsage: **/stats <SteamID>** (example: */stats 76561197968420961*).\n"
-            message_content += "**/survivorstats** - Looks up Dead By Daylight survivor statistics, ex.: # of games escaped, # of generators repaired.\nUsage: **/survivorstats <SteamID>** (example: */survivorstats 76561197968420961*).\n"
-            message_content += "**/survivormapstats** - Looks up map-specific survivor statistics.\nUsage: **/survivormapstats <SteamID>** (example: */survivormapstats 76561197968420961*).\n"
-            message_content += "**/killerstats** - Looks up Dead by Daylight Killer statistics, like: # of survivors hooked, # of survivors killed.\nUsage: **/killerstats <SteamID>** (example: */killerstats 76561197968420961*).\n"
-            message_content += "**/killercharacterstats** - Looks up character-specific stats as killer.\nUsage: **/killercharacterstats <SteamID>** (example: */killercharacterstats 76561197968420961*).\n"
-            message_content += "\nYour SteamID is a unique identifier that's 17 numbers long and **different than your username**. To look up your SteamID, open Steam, click your username in the upper right hand side of the application, select 'Account Details'. Your Steam ID is below your username.\n"
-            message_content += "**Important:** Your Steam Profile & Game details must be set to public to get your information from the Steam API. To set your profile to public, open your profile in Steam and click \"Edit Profile\", then set \"My profile\" and \"Game details\" to Public ([Click here for examples of how to look up your SteamID and set your profile to public](https://imgur.com/a/Xw3KbJ5))."
+            message_content = "I'm Spooky Bot. I look up your Dead By Daylight stats from Steam. Here are my commands:\n\n"
+            message_content += "**/shrine** - Lists current perks in the Shrine of Secrets & cost \nUsage: **/shrine**\n"
+            message_content += "**/perk** - Looks up the description for a given perk name. *Useful after getting perks from **/shrine***\nUsage: **/perk** <Perk Name>"
+            message_content += "**/stats** - Shows overall Dead by Daylight stats, like # of matches escaped and # of survivors sacrificed.\nUsage: **/stats <SteamID or username>** (example: */stats Mattschwabby*).\n"
+            message_content += "**/survivorstats** - Shows Dead By Daylight survivor statistics, ex.: # of games escaped, # of generators repaired.\nUsage: **/survivorstats <SteamIDor username>** (example: */survivorstats 76561197968420961*).\n"
+            message_content += "**/survivormapstats** - Shows map-specific survivor statistics.\nUsage: **/survivormapstats <SteamID or username>** (example: */survivormapstats Mattschwabby*).\n"
+            message_content += "**/killerstats** - Shows Dead by Daylight Killer statistics, like: # of survivors hooked, # of survivors killed.\nUsage: **/killerstats <SteamID or username>** (example: */killerstats 76561197968420961*).\n"
+            message_content += "**/killercharacterstats** - Shows character-specific stats as killer.\nUsage: **/killercharacterstats <SteamID or username>** (example: */killercharacterstats Mattschwabby*).\n"
+            message_content += "\nUsername is case sensitive. Commands will only work with your username **after you've sent at least one command with your SteamID**. Your SteamID is a unique identifier that's 17 numbers long and **different than your username**. To look up your SteamID, open Steam, click your username in the upper right hand side of the application, select 'Account Details'. Your Steam ID is below your username.\n"
+            message_content += "**Important:** Your Steam Profile & Game details must be set to public to get your information from the Steam API. To set your profile to public, open your profile in Steam and click \"Edit Profile\", then set \"My profile\" & \"Game details\" to Public ([Click here for examples of how to look up your SteamID & set your profile to public](https://imgur.com/a/Xw3KbJ5))."
         elif command_name == "steamtest":
             message_sender = data["id"]
             steamuserid = data["options"][0]["value"]
@@ -351,10 +413,7 @@ def interact(raw_request):
         elif command_name == "survivorstats":
             steamuserid = data["options"][0]["value"]
             message_sender = data["id"]
-            spacecheck = bool(re.search(r"\s", steamuserid))
-            if spacecheck==True:
-                message_content = "SteamID must be a number with no spaces. To learn how to find your SteamID, type the **/help** command."
-            elif steamuserid.isnumeric():
+            if steamuserid.isnumeric():
                 steamusername=get_steam_username(steamapikey, steamuserid)
                 today = datetime.now()
                 # Get current ISO 8601 datetime in string format
@@ -376,13 +435,40 @@ def interact(raw_request):
                     print(f"Log from local desktop - stat is {stat}, message_content is:")
                     print(this_message)
                 message_content = result_string
+            elif steamuserid:
+                steam_user_name=steamuserid
+                message_sender = data["id"]
+                try:
+                    steam_user_id=get_latest_steam_userid_dynamo(dynamodb_table_name,steam_user_name)
+                    print(f"Received input with alpha characters, searching for steam user id for steam username {steam_user_name} - got {steam_user_id}")
+                    today = datetime.now()
+                    # Get current ISO 8601 datetime in string format
+                    iso_date = today.isoformat()
+                    item = {
+                        'SteamUserID': int(steam_user_id),
+                        'SteamUserName': steam_user_name,
+                        'DiscordUserID': message_sender,
+                        'lastUpdated': iso_date
+                    }
+                    table.put_item(Item=item)
+                    result_string=f"Survivor stats for Steam Username **{steam_user_name}** requested by **@{username}** *(User ID: {steam_user_id}*): \n"
+                    thissurvivorstat=[]
+                    for stat in survivorstats:
+                        teststatresult = get_dbd_player_stats(steamapikey, steam_user_id, stat)
+                        thissurvivorstat
+                        this_message = f"{descriptors[stat]}: **{teststatresult}** \n"
+                        result_string += this_message
+                        print(f"Log from local desktop - stat is {stat}, message_content is:")
+                        print(this_message)
+                    message_content = result_string
+                except Exception as e:
+                    error_message=f"Couldn't resolve SteamUserID for SteamUserName {steam_user_name}"
+                    print(error_message)
+                    message_content =error_message
         elif command_name == "survivormapstats":
             steamuserid = data["options"][0]["value"]
             message_sender = data["id"]
-            spacecheck = bool(re.search(r"\s", steamuserid))
-            if spacecheck==True:
-                message_content = "SteamID must be a number with no spaces. To learn how to find your SteamID, type the **/help** command."
-            elif steamuserid.isnumeric():
+            if steamuserid.isnumeric():
                 steamusername=get_steam_username(steamapikey, steamuserid)
                 today = datetime.now()
                 # Get current ISO 8601 datetime in string format
@@ -394,7 +480,7 @@ def interact(raw_request):
                     'lastUpdated': iso_date
                 }
                 table.put_item(Item=item)
-                result_string=f"Survivor stats for Steam Username **{steamusername}** requested by **@{username}** *(User ID: {steamuserid})*: \n"
+                result_string=f"Survivor map stats for Steam Username **{steamusername}** requested by **@{username}** *(User ID: {steamuserid})*: \n"
                 thissurvivorstat=[]
                 for stat in survivormapstats:
                     teststatresult = get_dbd_player_stats(steamapikey, steamuserid, stat)
@@ -404,13 +490,40 @@ def interact(raw_request):
                     print(f"Log from local desktop - stat is {stat}, message_content is:")
                     print(this_message)
                 message_content = result_string
+            elif steamuserid:
+                steam_user_name=steamuserid
+                message_sender = data["id"]
+                try:
+                    steam_user_id=get_latest_steam_userid_dynamo(dynamodb_table_name,steam_user_name)
+                    print(f"Received input with alpha characters, searching for steam user id for steam username {steamuserid} - got {steam_user_id}")
+                    today = datetime.now()
+                    # Get current ISO 8601 datetime in string format
+                    iso_date = today.isoformat()
+                    item = {
+                        'SteamUserID': int(steam_user_id),
+                        'SteamUserName': steam_user_name,
+                        'DiscordUserID': message_sender,
+                        'lastUpdated': iso_date
+                    }
+                    table.put_item(Item=item)
+                    result_string=f"Survivor map stats for Steam Username **{steam_user_name}** requested by **@{username}** *(User ID: {steam_user_id}*): \n"
+                    thissurvivorstat=[]
+                    for stat in survivormapstats:
+                        teststatresult = get_dbd_player_stats(steamapikey, steam_user_id, stat)
+                        thissurvivorstat
+                        this_message = f"{descriptors[stat]}: **{teststatresult}** \n"
+                        result_string += this_message
+                        print(f"Log from local desktop - stat is {stat}, message_content is:")
+                        print(this_message)
+                    message_content = result_string
+                except Exception as e:
+                    error_message=f"Couldn't resolve SteamUserID for SteamUserName {steam_user_name}. Make sure you've sent me **at least one command with your SteamID** before I can find your stats using a **username**. Type /help for instructions on finding your Steam ID."
+                    print(error_message)
+                    message_content =error_message
         elif command_name == "killerstats":
             steamuserid = data["options"][0]["value"]
             message_sender = data["id"]
-            spacecheck = bool(re.search(r"\s", steamuserid))
-            if spacecheck==True:
-                message_content = "SteamID must be a number with no spaces. To learn how to find your SteamID, type the **/help** command."
-            elif steamuserid.isnumeric():
+            if steamuserid.isnumeric():
                 steamusername=get_steam_username(steamapikey, steamuserid)
                 today = datetime.now()
                 # Get current ISO 8601 datetime in string format
@@ -432,13 +545,40 @@ def interact(raw_request):
                     print(f"Log from local desktop - stat is {stat}, message_content is:")
                     print(this_message)
                 message_content = result_string
+            elif steamuserid:
+                steam_user_name=steamuserid
+                message_sender = data["id"]
+                try:
+                    steam_user_id=get_latest_steam_userid_dynamo(dynamodb_table_name,steam_user_name)
+                    print(f"Received input with alpha characters, searching for steam user id for steam username {steamuserid} - got {steam_user_id}")
+                    today = datetime.now()
+                    # Get current ISO 8601 datetime in string format
+                    iso_date = today.isoformat()
+                    item = {
+                        'SteamUserID': int(steam_user_id),
+                        'SteamUserName': steam_user_name,
+                        'DiscordUserID': message_sender,
+                        'lastUpdated': iso_date
+                    }
+                    table.put_item(Item=item)
+                    result_string=f"Killer stats for Steam Username **{steam_user_name}** requested by **@{username}** *(User ID: {steam_user_id}*): \n"
+                    thissurvivorstat=[]
+                    for stat in killerstats:
+                        teststatresult = get_dbd_player_stats(steamapikey, steam_user_id, stat)
+                        thissurvivorstat
+                        this_message = f"{descriptors[stat]}: **{teststatresult}** \n"
+                        result_string += this_message
+                        print(f"Log from local desktop - stat is {stat}, message_content is:")
+                        print(this_message)
+                    message_content = result_string
+                except Exception as e:
+                    error_message=f"Couldn't resolve SteamUserID for SteamUserName {steam_user_name}. Make sure you've sent me **at least one command with your SteamID** before I can find your stats using a **username**. Type /help for instructions on finding your Steam ID."
+                    print(error_message)
+                    message_content =error_message
         elif command_name == "killercharacterstats":
             steamuserid = data["options"][0]["value"]
             message_sender = data["id"]
-            spacecheck = bool(re.search(r"\s", steamuserid))
-            if spacecheck==True:
-                message_content = "SteamID must be a number with no spaces. To learn how to find your SteamID, type the **/help** command."
-            elif steamuserid.isnumeric():
+            if steamuserid.isnumeric():
                 steamusername=get_steam_username(steamapikey, steamuserid)
                 today = datetime.now()
                 # Get current ISO 8601 datetime in string format
@@ -450,7 +590,7 @@ def interact(raw_request):
                     'lastUpdated': iso_date
                 }
                 table.put_item(Item=item)
-                result_string=f"Killer stats for Steam Username **{steamusername}** requested by **@{username}** *(User ID: {steamuserid})*: \n"
+                result_string=f"Killer character stats for Steam Username **{steamusername}** requested by **@{username}** *(User ID: {steamuserid})*: \n"
                 thissurvivorstat=[]
                 for stat in killercharacterstats:
                     teststatresult = get_dbd_player_stats(steamapikey, steamuserid, stat)
@@ -460,13 +600,40 @@ def interact(raw_request):
                     print(f"Log from local desktop - stat is {stat}, message_content is:")
                     print(this_message)
                 message_content = result_string
+            elif steamuserid:
+                steam_user_name=steamuserid
+                message_sender = data["id"]
+                try:
+                    steam_user_id=get_latest_steam_userid_dynamo(dynamodb_table_name,steam_user_name)
+                    print(f"Received input with alpha characters, searching for steam user id for steam username {steamuserid} - got {steam_user_id}")
+                    today = datetime.now()
+                    # Get current ISO 8601 datetime in string format
+                    iso_date = today.isoformat()
+                    item = {
+                        'SteamUserID': int(steam_user_id),
+                        'SteamUserName': steam_user_name,
+                        'DiscordUserID': message_sender,
+                        'lastUpdated': iso_date
+                    }
+                    table.put_item(Item=item)
+                    result_string=f"Killer character stats for Steam Username **{steam_user_name}** requested by **@{username}** *(User ID: {steam_user_id}*): \n"
+                    thissurvivorstat=[]
+                    for stat in killercharacterstats:
+                        teststatresult = get_dbd_player_stats(steamapikey, steam_user_id, stat)
+                        thissurvivorstat
+                        this_message = f"{descriptors[stat]}: **{teststatresult}** \n"
+                        result_string += this_message
+                        print(f"Log from local desktop - stat is {stat}, message_content is:")
+                        print(this_message)
+                    message_content = result_string
+                except Exception as e:
+                    error_message=f"Couldn't resolve SteamUserID for SteamUserName {steam_user_name}. Make sure you've sent me **at least one command with your SteamID** before I can find your stats using a **username**. Type /help for instructions on finding your Steam ID."
+                    print(error_message)
+                    message_content =error_message
         elif command_name == "stats":
             steamuserid = data["options"][0]["value"]
             message_sender = data["id"]
-            spacecheck = bool(re.search(r"\s", steamuserid))
-            if spacecheck==True:
-                message_content = "SteamID must be a number with no spaces. To learn how to find your SteamID, type the **/help** command."
-            elif steamuserid.isnumeric():
+            if steamuserid.isnumeric():
                 steamusername=get_steam_username(steamapikey, steamuserid)
                 today = datetime.now()
                 # Get current ISO 8601 datetime in string format
@@ -488,36 +655,78 @@ def interact(raw_request):
                     print(f"Log from main.py - stat is {stat}, message_content is:")
                     print(this_message)
                 message_content = result_string
+            elif steamuserid:
+                steam_user_name=data["options"][0]["value"]
+                message_sender = data["id"]
+                try:
+                    steam_user_id=get_latest_steam_userid_dynamo(dynamodb_table_name,steam_user_name)
+                    print(f"Received input with alpha characters, searching for steam user id for steam username {steamuserid} - got {steam_user_id}")
+                    today = datetime.now()
+                    # Get current ISO 8601 datetime in string format
+                    iso_date = today.isoformat()
+                    item = {
+                        'SteamUserID': int(steam_user_id),
+                        'SteamUserName': steam_user_name,
+                        'DiscordUserID': message_sender,
+                        'lastUpdated': iso_date
+                    }
+                    table.put_item(Item=item)
+                    result_string=f"Overall stats for Steam Username **{steam_user_name}** requested by **@{username}** *(User ID: {steam_user_id}*): \n"
+                    thissurvivorstat=[]
+                    for stat in overallstats:
+                        teststatresult = get_dbd_player_stats(steamapikey, steam_user_id, stat)
+                        thissurvivorstat
+                        this_message = f"{descriptors[stat]}: **{teststatresult}** \n"
+                        result_string += this_message
+                        print(f"Log from local desktop - stat is {stat}, message_content is:")
+                        print(this_message)
+                    message_content = result_string
+                except Exception as e:
+                    error_message=f"Couldn't resolve SteamUserID for SteamUserName {steam_user_name}. Make sure you've sent me **at least one command with your SteamID** before I can find your stats using a **username**. Type /help for instructions on finding your Steam ID."
+                    print(error_message)
+                    message_content =error_message
         elif command_name == "shrine":
-            shrineurl="https://dbd.tricky.lol/api/shrine"
-            shrineperkurl="https://dbd.tricky.lol/api/perkinfo"
-            shrineresponse = requests.get(shrineurl)
-            perks = shrineresponse.json()
-            result_string=f"Current shrine perks are: \n"
-            for perk in perks["perks"]:
-                thisperk=perk["id"]
-                thisperkurl=f"{shrineperkurl}?perk={thisperk}"
-                perkresponse=requests.get(thisperkurl)
-                thisperkinfo = perkresponse.json()
-                this_shrine_perk=shrineperk(name=thisperkinfo["name"], description=thisperkinfo["description"], bloodpointcost=perk["bloodpoints"], shardcost=perk["shards"])
-                result_string+=f"**{this_shrine_perk.name}** \n Bloodpoint cost: **{this_shrine_perk.bloodpointcost}** \n Shard cost: **{this_shrine_perk.shardcost}** \n Perk ID: **{thisperk}** *Perk ID can be used to look up the perk's description using the **/perk {thisperk}** command* \n"
-            print(f"Log from main.py - Discord user {username} requested current shrine perks. message_content: ")
-            print(result_string)
-            message_content = result_string
+            try:
+                shrineurl="https://dbd.tricky.lol/api/shrine"
+                shrineperkurl="https://dbd.tricky.lol/api/perkinfo"
+                shrineresponse = requests.get(shrineurl)
+                perks = shrineresponse.json()
+                result_string=f"Current shrine perks are: \n"
+                for perk in perks["perks"]:
+                    thisperk=perk["id"]
+                    thisperkurl=f"{shrineperkurl}?perk={thisperk}"
+                    perkresponse=requests.get(thisperkurl)
+                    thisperkinfo = perkresponse.json()
+                    this_shrine_perk=shrineperk(name=thisperkinfo["name"], description=thisperkinfo["description"], bloodpointcost=perk["bloodpoints"], shardcost=perk["shards"])
+                    result_string+=f"**{this_shrine_perk.name}** \n Bloodpoint cost: **{this_shrine_perk.bloodpointcost}** \n Shard cost: **{this_shrine_perk.shardcost}** \n"
+                result_string+=f"\nYou can look up a Perk's description using the /perk command (Case sensitive): **/perk {this_shrine_perk.name}** "
+                print(f"Log from main.py - Discord user {username} requested current shrine perks. message_content: ")
+                print(result_string)
+                message_content = result_string
+            except Exception as e:
+                print("User encountered an exception")
+                message_content = "Discord encountered an error when processing your request. Please try again."
         elif command_name == "perk":
-            perk = data["options"][0]["value"]
+            perk_name = data["options"][0]["value"]
+            perk_id=get_perkid_by_name(PERK_CACHE_TABLE,perk_name)
             message_sender = data["id"]
             perkurl="https://dbd.tricky.lol/api/perkinfo"
-            thisperkurl=f"{perkurl}?perk={perk}"
+            thisperkurl=f"{perkurl}?perk={perk_id}"
             try:
                 perkresponse=requests.get(thisperkurl)
                 thisperkinfo = perkresponse.json()
                 perk_name = thisperkinfo["name"]
                 replaced_description=replace_numbers_in_description(thisperkinfo)
                 new_description=replace_html_tags(replaced_description["description"])
-                message_content=f"**Name:** {perk_name} \n**ID:** {perk}\n**Description:** {new_description}"
+                message_content=f"**Name:** {perk_name} \n**ID:** {perk_id}\n**Description:** {new_description}"
             except:
-                message_content=f"Failed to get Perk information for: {perk}"
+                message_content=f"Failed to get Perk information for: {perk_name}. Please try again, and check the spelling of the Perk Name."
+        elif command_name == "spookyboys":
+            spoooky_boy_result = scan_table_and_filter_latest_items(dynamodb_table_name)
+            print(spoooky_boy_result)
+            message_content=f"My current user cache is: \n"
+            for spooky_boy in spoooky_boy_result:
+                message_content+=f"Username: {spooky_boy['SteamUserName']} | SteamID:{int('SteamUserId')} | Last Updated: {'lastUpdated'} \n"
 
         # Form the message to be sent to Discord
         response_data = {

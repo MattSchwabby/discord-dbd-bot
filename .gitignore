@@ -9,6 +9,11 @@ OLDstat_table_update.py
 pythonDBDAPITest.py
 ShrineTest.py
 PerkTest.py
+dynamo_username_testing.py
+dynamo_perk_cache_testing.py
+shrineTest.py
+tunables_test.py
+spooky_boy_list_test.py
 
 # CDK asset staging directory
 .cdk.staging

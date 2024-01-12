@@ -1,8 +1,10 @@
 import json
-import requests
 import boto3
+import botocore
+#from botocore.vendored import requests
+import requests
 import os
-import time
+from datetime import datetime
 api_url = 'https://dbd.tricky.lol/api/perks'
 perk_url = 'https://dbd.tricky.lol/api/perkinfo'
 
@@ -18,12 +20,16 @@ def get_perks_data():
 def handler(event, context):
 
     perks_data = get_perks_data()
+    today = datetime.now()
 
+    # Get current ISO 8601 datetime in string format
+    iso_date = today.isoformat()
     for perk in perks_data.keys():
         name=perks_data[perk]['name']
         item = {
         'perk_id': perk,
         'name': name,
+        'lastUpdated': iso_date
         }
         try:
             table.put_item(Item=item)
@@ -36,3 +42,15 @@ def handler(event, context):
         'statusCode': 200,
         'body': 'Function executed successfully!'
 }
+
+'''
+test_event = {
+    "key1": "value1",
+    "key2": "value2",
+    "key3": "value3"
+}
+
+context="testing handler()"
+
+handler(test_event, context)
+'''

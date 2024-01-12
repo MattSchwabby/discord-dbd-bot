@@ -18,21 +18,38 @@ export class DiscordBotLambdaStack extends cdk.Stack {
     const userCacheTable = new dynamodb.Table(this, 'SteamIDCache', {
       partitionKey: { name: 'SteamUserID', type: dynamodb.AttributeType.NUMBER },
       tableName: 'SteamIDCache',
-      sortKey: { name: 'date', type: dynamodb.AttributeType.STRING },
-      removalPolicy: cdk.RemovalPolicy.DESTROY, // WARNING: This will delete the table and all data when the stack is deleted
+      sortKey: { name: 'lastUpdated', type: dynamodb.AttributeType.STRING },
+      removalPolicy: cdk.RemovalPolicy.RETAIN, // WARNING: This will delete the table and all data when the stack is deleted
+    });
+    userCacheTable.addGlobalSecondaryIndex({
+      indexName: 'SteamUserNameIndex',
+      partitionKey: {
+        name: 'SteamUserName',
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
     });
 
     const userStatTable = new dynamodb.Table(this, 'userStatCache', {
       partitionKey: { name: 'SteamUserID', type: dynamodb.AttributeType.NUMBER },
       sortKey: { name: 'date', type: dynamodb.AttributeType.STRING },
       tableName: 'userStatCache',
-      removalPolicy: cdk.RemovalPolicy.DESTROY, // WARNING: This will delete the table and all data when the stack is deleted
+      removalPolicy: cdk.RemovalPolicy.RETAIN, // WARNING: This will delete the table and all data when the stack is deleted
     });
 
     const perkTable = new dynamodb.Table(this, 'perkTable', {
       partitionKey: { name: 'perk_id', type: dynamodb.AttributeType.STRING },
       tableName: 'dbdPerkCache',
-      removalPolicy: cdk.RemovalPolicy.DESTROY, // WARNING: This will delete the table and all data when the stack is deleted
+      sortKey: { name: 'name', type: dynamodb.AttributeType.STRING },
+      removalPolicy: cdk.RemovalPolicy.RETAIN, // WARNING: This will delete the table and all data when the stack is deleted
+    });
+    perkTable.addGlobalSecondaryIndex({
+      indexName: 'PerkNameIndex',
+      partitionKey: {
+        name: 'name',
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
     });
 
 
@@ -54,7 +71,7 @@ export class DiscordBotLambdaStack extends cdk.Stack {
       }
     );
 
-    userCacheTable.grantWriteData(dockerFunction);
+    userCacheTable.grantReadWriteData(dockerFunction);
 
     // Define the Docker Function URL
     const functionUrl = dockerFunction.addFunctionUrl({
@@ -67,12 +84,11 @@ export class DiscordBotLambdaStack extends cdk.Stack {
     });
 
     // Define the Stat Table Updater Lambda
-    const statTableUpdater = new lambda.Function(this, 'StatTableUpdater', {
-      runtime: lambda.Runtime.PYTHON_3_8,
-      handler: 'stat_table_update.handler',
-      code: lambda.Code.fromAsset(path.join("./scripts/stat_table_update/")),
+    const statTableUpdater = new lambda.DockerImageFunction(this, 'StatTableUpdaterv2', {
+      code: lambda.DockerImageCode.fromImageAsset("./scripts/stat_table_update/"),
       memorySize: 256,
-      timeout: cdk.Duration.seconds(15),
+      timeout: cdk.Duration.seconds(20),
+      architecture: lambda.Architecture.X86_64,
       environment: {
         DISCORD_PUBLIC_KEY: discordPublicKey,
         USER_STAT_TABLE: userStatTable.tableName,
@@ -80,22 +96,32 @@ export class DiscordBotLambdaStack extends cdk.Stack {
         steamapikey: steamapikey
       },
     });
-
+    userCacheTable.grantReadWriteData(statTableUpdater);
     userStatTable.grantReadWriteData(statTableUpdater);
 
     // Define the Perk Cache Updater Lambda
-    const perkCacheUpdater = new lambda.Function(this, 'perkCacheUpdater', {
-      runtime: lambda.Runtime.PYTHON_3_8,
-      handler: 'perk_cache_update.handler',
-      code: lambda.Code.fromAsset(path.join("./scripts/perk_cache_update/")),
+    const perkCacheUpdater = new lambda.DockerImageFunction(this, 'perkCacheUpdaterv2', {
+      code: lambda.DockerImageCode.fromImageAsset("./scripts/perk_cache_update/"),
       memorySize: 256,
-      timeout: cdk.Duration.seconds(10),
+      timeout: cdk.Duration.seconds(60),
+      architecture: lambda.Architecture.X86_64,
       environment: {
         DYNAMODB_TABLE_NAME: perkTable.tableName,
       },
     });
-
+    perkTable.grantReadData(dockerFunction);
     perkTable.grantReadWriteData(perkCacheUpdater);
+
+    const userCacheUpdater = new lambda.DockerImageFunction(this, 'userCacheUpdater', {
+      code: lambda.DockerImageCode.fromImageAsset("./scripts/user_cache_updater/"),
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(10),
+      architecture: lambda.Architecture.X86_64,
+      environment: {
+        USER_CACHE_TABLE: userCacheTable.tableName,
+      },
+    });
+    userCacheTable.grantReadWriteData(userCacheUpdater);
 
     // CloudWatch Event Rules
     const statTableEventRule = new events.Rule(this, 'statTableEventRule', {
@@ -109,6 +135,11 @@ export class DiscordBotLambdaStack extends cdk.Stack {
     });
   
     perkCacheEventRule.addTarget(new targets.LambdaFunction(perkCacheUpdater));
+
+    const userCacheEventRule = new events.Rule(this, 'userCacheEventRule', {
+      schedule: events.Schedule.cron({ minute: '0', hour: '*' }), // Trigger every hour
+    });
+    userCacheEventRule.addTarget(new targets.LambdaFunction(userCacheUpdater));
 
     new cdk.CfnOutput(this, "FunctionUrl", {
       value: functionUrl.url,
