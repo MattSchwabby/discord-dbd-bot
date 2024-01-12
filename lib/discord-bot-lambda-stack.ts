@@ -69,7 +69,7 @@ export class DiscordBotLambdaStack extends cdk.Stack {
     // Define the Stat Table Updater Lambda
     const statTableUpdater = new lambda.Function(this, 'StatTableUpdater', {
       runtime: lambda.Runtime.PYTHON_3_8,
-      handler: 'index.handler',
+      handler: 'stat_table_update.handler',
       code: lambda.Code.fromAsset(path.join("./scripts/stat_table_update/")),
       memorySize: 256,
       timeout: cdk.Duration.seconds(15),
@@ -86,7 +86,7 @@ export class DiscordBotLambdaStack extends cdk.Stack {
     // Define the Perk Cache Updater Lambda
     const perkCacheUpdater = new lambda.Function(this, 'perkCacheUpdater', {
       runtime: lambda.Runtime.PYTHON_3_8,
-      handler: 'index.handler',
+      handler: 'perk_cache_update.handler',
       code: lambda.Code.fromAsset(path.join("./scripts/perk_cache_update/")),
       memorySize: 256,
       timeout: cdk.Duration.seconds(10),

@@ -15,18 +15,24 @@ def get_perks_data():
     response = requests.get(api_url)
     return response.json()
 
-perks_data = get_perks_data()
+def handler(event, context):
 
-for perk in perks_data.keys():
-    name=perks_data[perk]['name']
-    item = {
-    'perk_id': perk,
-    'name': name,
-    }
-    try:
-        table.put_item(Item=item)
-        print(f"Wrote item {item} to Dynamo")
-    except Exception as write_e:
-        print(f"Error writing item {item}: {write_e}")
+    perks_data = get_perks_data()
+
+    for perk in perks_data.keys():
+        name=perks_data[perk]['name']
+        item = {
+        'perk_id': perk,
+        'name': name,
+        }
+        try:
+            table.put_item(Item=item)
+            print(f"Wrote item {item} to Dynamo")
+        except Exception as write_e:
+            print(f"Error writing item {item}: {write_e}")
 
 
+    return {
+        'statusCode': 200,
+        'body': 'Function executed successfully!'
+}

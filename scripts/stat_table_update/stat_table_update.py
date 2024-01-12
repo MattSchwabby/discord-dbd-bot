@@ -42,7 +42,7 @@ def get_dbd_survivor_wins(api_key, user_id):
     except:
         return "Error getting data from Steam"
 
-def lambda_handler(event, context):
+def handler(event, context):
     # Load environment variables
     USER_CACHE_TABLE = os.environ['USER_CACHE_TABLE']
     USER_STAT_TABLE = os.environ['USER_STAT_TABLE']
