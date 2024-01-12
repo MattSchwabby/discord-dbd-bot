@@ -42,56 +42,61 @@ def get_dbd_survivor_wins(api_key, user_id):
     except:
         return "Error getting data from Steam"
 
-# Load environment variables
-USER_CACHE_TABLE = os.environ['USER_CACHE_TABLE']
-USER_STAT_TABLE = os.environ['USER_STAT_TABLE']
-steam_api_key = os.environ['steamapikey']
-#print(steam_api_key)
+def lambda_handler(event, context):
+    # Load environment variables
+    USER_CACHE_TABLE = os.environ['USER_CACHE_TABLE']
+    USER_STAT_TABLE = os.environ['USER_STAT_TABLE']
+    steam_api_key = os.environ['steamapikey']
+    #print(steam_api_key)
 
-# Create DynamoDB client
-dynamodb = boto3.resource('dynamodb')
-user_table = dynamodb.Table(USER_CACHE_TABLE)
-stat_table = dynamodb.Table(USER_STAT_TABLE)
+    # Create DynamoDB client
+    dynamodb = boto3.resource('dynamodb')
+    user_table = dynamodb.Table(USER_CACHE_TABLE)
+    stat_table = dynamodb.Table(USER_STAT_TABLE)
 
-# Scan User_ID table for all items
-response = user_table.scan()
-items = response.get('Items', [])
-#print(items)
+    # Scan User_ID table for all items
+    response = user_table.scan()
+    items = response.get('Items', [])
+    #print(items)
 
-for item in items:
-    steam_user_id = item.get('SteamUserID')
-    #print(steam_user_id)
-    app_id=381210
-    steam_api_url = f"http://api.steampowered.com/ISteamUserStats/GetUserStatsForGame/v0002/?key={steam_api_key}&steamid={steam_user_id}&appid={app_id}"
-    #print(steam_api_url)
-    
-    try:
-        api_response = requests.get(steam_api_url)
-        #print(api_response)
-        api_data = api_response.json()
-        #print(api_data)
+    for item in items:
+        steam_user_id = item.get('SteamUserID')
+        #print(steam_user_id)
+        app_id=381210
+        steam_api_url = f"http://api.steampowered.com/ISteamUserStats/GetUserStatsForGame/v0002/?key={steam_api_key}&steamid={steam_user_id}&appid={app_id}"
+        #print(steam_api_url)
+        
+        try:
+            api_response = requests.get(steam_api_url)
+            #print(api_response)
+            api_data = api_response.json()
+            #print(api_data)
 
-        if api_response.status_code == 200:
-            #print(f"SteamUserID: {steam_user_id}, API Response: {api_data['playerstats']['stats']}")
-            print(steam_user_id)
-            stats = json.dumps(api_data['playerstats']['stats'])
-            today = datetime.now()
+            if api_response.status_code == 200:
+                #print(f"SteamUserID: {steam_user_id}, API Response: {api_data['playerstats']['stats']}")
+                print(steam_user_id)
+                stats = json.dumps(api_data['playerstats']['stats'])
+                today = datetime.now()
 
-            # Get current ISO 8601 datetime in string format
-            iso_date = today.isoformat()
-            
-            item={
-                'SteamUserID':Decimal(steam_user_id),
-                'date': iso_date,
-                'stats': stats
-            }
-            
-            try:
-                stat_table.put_item(Item=item)
-            except Exception as write_e:
-                print(f"Error writing user stats for SteamUserID {steam_user_id}: {write_e}")
+                # Get current ISO 8601 datetime in string format
+                iso_date = today.isoformat()
+                
+                item={
+                    'SteamUserID':Decimal(steam_user_id),
+                    'date': iso_date,
+                    'stats': stats
+                }
+                
+                try:
+                    stat_table.put_item(Item=item)
+                except Exception as write_e:
+                    print(f"Error writing user stats for SteamUserID {steam_user_id}: {write_e}")
 
+                    #print(item)
                 #print(item)
-            #print(item)
-    except Exception as e:
-        print(f"Error calling Steam API for SteamUserID {steam_user_id}: {e}")
+        except Exception as e:
+            print(f"Error calling Steam API for SteamUserID {steam_user_id}: {e}")
+    return {
+        'statusCode': 200,
+        'body': 'Function executed successfully!'
+}
