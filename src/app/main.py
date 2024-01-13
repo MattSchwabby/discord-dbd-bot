@@ -181,11 +181,11 @@ def scan_table_and_filter_latest_items(table_name):
         steam_user_id = item['SteamUserID']
         steam_user_name = item['SteamUserName']
         date = item['lastUpdated']
-        if steam_user_name in latest_items:
-            if datetime.fromisoformat(date) > datetime.fromisoformat(latest_items[steam_user_name]['lastUpdated']):
-                latest_items[steam_user_name] = item
+        if steam_user_id in latest_items:
+            if datetime.fromisoformat(date) > datetime.fromisoformat(latest_items[steam_user_id]['lastUpdated']):
+                latest_items[steam_user_id] = item
         else:
-            latest_items[steam_user_name] = item
+            latest_items[steam_user_id] = item
     result = list(latest_items.values())
     return result
 

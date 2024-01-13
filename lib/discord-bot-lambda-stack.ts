@@ -119,6 +119,7 @@ export class DiscordBotLambdaStack extends cdk.Stack {
       architecture: lambda.Architecture.X86_64,
       environment: {
         USER_CACHE_TABLE: userCacheTable.tableName,
+        steamapikey: steamapikey
       },
     });
     userCacheTable.grantReadWriteData(userCacheUpdater);
