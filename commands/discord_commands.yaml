@@ -54,3 +54,6 @@
       description: The AccountID to send to Steam for Killer statistics.
       type: 3 # string
       required: true
+
+- name: spookyboys
+  description: Get the current list of cached usernames. Cache updates every hour.

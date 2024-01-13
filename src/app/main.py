@@ -377,16 +377,17 @@ def interact(raw_request):
         if command_name == "hello":
             message_content = "Hello there!"
         elif command_name == "help":
-            message_content = "I'm Spooky Bot. I look up your Dead By Daylight stats from Steam. Here are my commands:\n\n"
-            message_content += "**/shrine** - Lists current perks in the Shrine of Secrets & cost \nUsage: **/shrine**\n"
-            message_content += "**/perk** - Looks up the description for a given perk name. *Useful after getting perks from **/shrine***\nUsage: **/perk** <Perk Name>"
-            message_content += "**/stats** - Shows overall Dead by Daylight stats, like # of matches escaped and # of survivors sacrificed.\nUsage: **/stats <SteamID or username>** (example: */stats Mattschwabby*).\n"
-            message_content += "**/survivorstats** - Shows Dead By Daylight survivor statistics, ex.: # of games escaped, # of generators repaired.\nUsage: **/survivorstats <SteamIDor username>** (example: */survivorstats 76561197968420961*).\n"
+            message_content = "I look up Dead By Daylight stats from Steam. Here are my commands:\n\n"
+            message_content += "**/shrine** - Lists perks in the Shrine of Secrets & cost \nUsage: **/shrine**\n"
+            message_content += "**/perk** - Shows description for a given perk name. *Useful after getting perks from **/shrine***\nUsage: **/perk** <Perk Name>"
+            message_content += "**/stats** - Shows overall DBD stats, ex: # of matches escaped & # of survivors sacrificed.\nUsage: **/stats <SteamID or username>** (example: */stats Mattschwabby*).\n"
+            message_content += "**/survivorstats** - Shows DBD survivor stats, ex.: # of escapes, # of generators repaired.\nUsage: **/survivorstats <SteamIDor username>** (example: */survivorstats 76561197968420961*).\n"
             message_content += "**/survivormapstats** - Shows map-specific survivor statistics.\nUsage: **/survivormapstats <SteamID or username>** (example: */survivormapstats Mattschwabby*).\n"
-            message_content += "**/killerstats** - Shows Dead by Daylight Killer statistics, like: # of survivors hooked, # of survivors killed.\nUsage: **/killerstats <SteamID or username>** (example: */killerstats 76561197968420961*).\n"
-            message_content += "**/killercharacterstats** - Shows character-specific stats as killer.\nUsage: **/killercharacterstats <SteamID or username>** (example: */killercharacterstats Mattschwabby*).\n"
-            message_content += "\nUsername is case sensitive. Commands will only work with your username **after you've sent at least one command with your SteamID**. Your SteamID is a unique identifier that's 17 numbers long and **different than your username**. To look up your SteamID, open Steam, click your username in the upper right hand side of the application, select 'Account Details'. Your Steam ID is below your username.\n"
-            message_content += "**Important:** Your Steam Profile & Game details must be set to public to get your information from the Steam API. To set your profile to public, open your profile in Steam and click \"Edit Profile\", then set \"My profile\" & \"Game details\" to Public ([Click here for examples of how to look up your SteamID & set your profile to public](https://imgur.com/a/Xw3KbJ5))."
+            message_content += "**/killerstats** - Shows DBD Killer stats, ex: # of survivors hooked, # of survivors killed.\nUsage: **/killerstats <SteamID or username>** (example: */killerstats 76561197968420961*).\n"
+            message_content += "**/killercharacterstats** - Shows killer-specific stats.\nUsage: **/killercharacterstats <SteamID or username>** (example: */killercharacterstats Mattschwabby*).\n"
+            message_content += "**/spookyboys** - Shows cached users including Steam Username & SteamID - updates hourly.\nUsage: **/spookyboys**\n"
+            message_content += "\nUsername is case sensitive. Username will only work **after you've sent at least one command with your SteamID**. A SteamID is a unique identifier that's 17 numbers long and **different than your username**. To look up your SteamID, open Steam, click your username in the upper right hand corner, click 'Account Details'. Your Steam ID is below your username.\n"
+            message_content += "**Important:** Your Steam Profile & Game details must be public to get your information from Steam. To set your profile to public, open your profile in Steam and click \"Edit Profile\", then set \"My profile\" & \"Game details\" to Public ([Click here for examples of how to look up your SteamID & set your profile to public](https://imgur.com/a/Xw3KbJ5))."
         elif command_name == "steamtest":
             message_sender = data["id"]
             steamuserid = data["options"][0]["value"]
@@ -726,7 +727,10 @@ def interact(raw_request):
             print(spoooky_boy_result)
             message_content=f"My current user cache is: \n"
             for spooky_boy in spoooky_boy_result:
-                message_content+=f"Username: {spooky_boy['SteamUserName']} | SteamID:{int('SteamUserId')} | Last Updated: {'lastUpdated'} \n"
+                message_content+=f"Steam Username: **{spooky_boy['SteamUserName']}** | SteamID: **{spooky_boy['SteamUserID']}** | Last Updated: *{spooky_boy['lastUpdated']}* \n"
+            message_content+=f"\nExample command using a username: **/stats {spooky_boy['SteamUserName']}**"
+            message_content+=f"\nExample command using a SteamID: **/stats {spooky_boy['SteamUserID']}**"
+
 
         # Form the message to be sent to Discord
         response_data = {
