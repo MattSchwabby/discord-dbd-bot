@@ -36,6 +36,14 @@ export class DiscordBotLambdaStack extends cdk.Stack {
       tableName: 'userStatCache',
       removalPolicy: cdk.RemovalPolicy.RETAIN, // WARNING: This will delete the table and all data when the stack is deleted
     });
+    userStatTable.addGlobalSecondaryIndex({
+      indexName:'date-index',
+      partitionKey: {
+        name: 'date',
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
 
     const perkTable = new dynamodb.Table(this, 'perkTable', {
       partitionKey: { name: 'perk_id', type: dynamodb.AttributeType.STRING },
