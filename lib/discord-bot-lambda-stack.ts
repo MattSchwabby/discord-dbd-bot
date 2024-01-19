@@ -60,6 +60,22 @@ export class DiscordBotLambdaStack extends cdk.Stack {
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
+    const awardTable = new dynamodb.Table(this, 'awardTable', {
+      partitionKey: { name: 'SteamUserID', type: dynamodb.AttributeType.STRING },
+      tableName: 'awardTable',
+      sortKey: { name: 'date', type: dynamodb.AttributeType.STRING },
+      removalPolicy: cdk.RemovalPolicy.RETAIN, // WARNING: This will delete the table and all data when the stack is deleted
+    });
+    perkTable.addGlobalSecondaryIndex({
+      indexName: 'PerkNameIndex',
+      partitionKey: {
+        name: 'awards',
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+
 
     // Define the main.py Lambda Function
     const dockerFunction = new lambda.DockerImageFunction(
