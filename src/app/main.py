@@ -69,6 +69,8 @@ def get_latest_steam_userid_dynamo(table_name,steam_user_name):
 
 def get_perkid_by_name(table_name,perk_name):
     perk_cache_table = dynamodb.Table(table_name)
+    if(perk_name=="Repressed Alliance"):
+        perk_name="Repressed&nbsp;Alliance"
     key_condition_expression = Key('name').eq(perk_name)
     index_name = 'PerkNameIndex'
     response = perk_cache_table.query(
@@ -169,6 +171,9 @@ def replace_html_tags(input_string):
     
     # Replace <li> and </li> with -
     result_string = result_string.replace('<li>', ' - ')
+
+    # Replace &nbsp; with " "
+    result_string = result_string.replace('&nbsp;',' ')
     
     return result_string
 
@@ -379,9 +384,9 @@ def interact(raw_request):
         elif command_name == "help":
             message_content = "I look up Dead By Daylight stats from Steam. Here are my commands:\n\n"
             message_content += "**/shrine** - Lists perks in the Shrine of Secrets & cost \nUsage: **/shrine**\n"
-            message_content += "**/perk** - Shows description for a given perk name. *Useful after getting perks from **/shrine***\nUsage: **/perk** <Perk Name>"
+            message_content += "**/perk** - Shows description for a given perk name. *Useful after getting perks from **/shrine***\nUsage: **/perk <Perk Name>**\n"
             message_content += "**/stats** - Shows overall DBD stats, ex: # of matches escaped & # of survivors sacrificed.\nUsage: **/stats <SteamID or username>** (example: */stats Mattschwabby*).\n"
-            message_content += "**/survivorstats** - Shows DBD survivor stats, ex.: # of escapes, # of generators repaired.\nUsage: **/survivorstats <SteamIDor username>** (example: */survivorstats 76561197968420961*).\n"
+            message_content += "**/survivorstats** - Shows DBD survivor stats, ex.: # of escapes, # of generators repaired.\nUsage: **/survivorstats <SteamID or username>** (example: */survivorstats 76561197968420961*).\n"
             message_content += "**/survivormapstats** - Shows map-specific survivor statistics.\nUsage: **/survivormapstats <SteamID or username>** (example: */survivormapstats Mattschwabby*).\n"
             message_content += "**/killerstats** - Shows DBD Killer stats, ex: # of survivors hooked, # of survivors killed.\nUsage: **/killerstats <SteamID or username>** (example: */killerstats 76561197968420961*).\n"
             message_content += "**/killercharacterstats** - Shows killer-specific stats.\nUsage: **/killercharacterstats <SteamID or username>** (example: */killercharacterstats Mattschwabby*).\n"
@@ -703,7 +708,8 @@ def interact(raw_request):
                 result_string+=f"\nYou can look up a Perk's description using the /perk command (Case sensitive): **/perk {this_shrine_perk.name}** "
                 print(f"Log from main.py - Discord user {username} requested current shrine perks. message_content: ")
                 print(result_string)
-                message_content = result_string
+                
+                message_content = replace_html_tags(result_string)
             except Exception as e:
                 print("User encountered an exception")
                 message_content = "Discord encountered an error when processing your request. Please try again."
@@ -719,7 +725,8 @@ def interact(raw_request):
                 perk_name = thisperkinfo["name"]
                 replaced_description=replace_numbers_in_description(thisperkinfo)
                 new_description=replace_html_tags(replaced_description["description"])
-                message_content=f"**Name:** {perk_name} \n**ID:** {perk_id}\n**Description:** {new_description}"
+                message_content=f"**Name:** {perk_name} \n**Description:** {new_description}"
+                message_content=replace_html_tags(message_content)
             except:
                 message_content=f"Failed to get Perk information for: {perk_name}. Please try again, and check the spelling of the Perk Name."
         elif command_name == "spookyboys":

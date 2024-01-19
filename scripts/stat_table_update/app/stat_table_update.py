@@ -6,6 +6,7 @@ import requests
 from datetime import datetime
 from decimal import Decimal
 import json
+from collections import defaultdict
 
 def get_dbd_player_stats(api_key, user_id):
     # Steam API endpoint for GetPlayerSummaries
@@ -57,12 +58,28 @@ def handler(event, context):
     stat_table = dynamodb.Table(USER_STAT_TABLE)
 
     # Scan User_ID table for all items
-    response = user_table.scan()
-    items = response.get('Items', [])
+    #response = user_table.scan()
+    #user_items = response.get('Items', [])
+    latest_items = defaultdict(dict)
     #print(items)
 
-    for item in items:
-        steam_user_id = item.get('SteamUserID')
+    # Query DynamoDB table for all SteamUserIDs
+    response = user_table.scan()
+
+    # Create a dictionary to store the most recent item for each SteamUserID
+    latest_items = defaultdict(dict)
+
+    # Iterate through items in the response
+    for item in response['Items']:
+        steam_user_id = item['SteamUserID']
+        last_updated = item['lastUpdated']
+
+        # Check if the current item is more recent than the stored item for the SteamUserID
+        if last_updated > latest_items[steam_user_id].get('lastUpdated', '0'):
+            latest_items[steam_user_id] = item
+
+    for steam_user_id, item in latest_items.items():
+        #steam_user_id = item.get('SteamUserID')
         #print(steam_user_id)
         app_id=381210
         steam_api_url = f"http://api.steampowered.com/ISteamUserStats/GetUserStatsForGame/v0002/?key={steam_api_key}&steamid={steam_user_id}&appid={app_id}"
