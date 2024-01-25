@@ -61,13 +61,13 @@ export class DiscordBotLambdaStack extends cdk.Stack {
     });
 
     const awardTable = new dynamodb.Table(this, 'awardTable', {
-      partitionKey: { name: 'SteamUserID', type: dynamodb.AttributeType.STRING },
+      partitionKey: { name: 'SteamUserID', type: dynamodb.AttributeType.NUMBER },
       tableName: 'awardTable',
       sortKey: { name: 'date', type: dynamodb.AttributeType.STRING },
       removalPolicy: cdk.RemovalPolicy.RETAIN, // WARNING: This will delete the table and all data when the stack is deleted
     });
     perkTable.addGlobalSecondaryIndex({
-      indexName: 'PerkNameIndex',
+      indexName: 'AwardNameIndex',
       partitionKey: {
         name: 'awards',
         type: dynamodb.AttributeType.STRING,
@@ -90,11 +90,14 @@ export class DiscordBotLambdaStack extends cdk.Stack {
           DISCORD_PUBLIC_KEY: discordPublicKey,
           USER_CACHE_TABLE: userCacheTable.tableName,
           PERK_CACHE_TABLE: perkTable.tableName,
-          steamapikey: steamapikey
+          steamapikey: steamapikey,
+          award_table_name: awardTable.tableName
         },
       }
     );
-
+    userStatTable.grantReadWriteData(dockerFunction);
+    awardTable.grantReadWriteData(dockerFunction);
+    perkTable.grantReadData(dockerFunction);
     userCacheTable.grantReadWriteData(dockerFunction);
 
     // Define the Docker Function URL
@@ -133,7 +136,7 @@ export class DiscordBotLambdaStack extends cdk.Stack {
         DYNAMODB_TABLE_NAME: perkTable.tableName,
       },
     });
-    perkTable.grantReadData(dockerFunction);
+
     perkTable.grantReadWriteData(perkCacheUpdater);
 
     const userCacheUpdater = new lambda.DockerImageFunction(this, 'userCacheUpdater', {

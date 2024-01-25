@@ -57,3 +57,9 @@
 
 - name: spookyboys
   description: Get the current list of cached usernames. Cache updates every hour.
+
+- name: leaderboard
+  description: Gets the current awards for each person in the user database.
+
+- name: awards
+  description: Lists available rewards and descriptions.

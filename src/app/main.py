@@ -5,10 +5,13 @@ from flask import Flask, jsonify, request
 from mangum import Mangum
 from asgiref.wsgi import WsgiToAsgi
 from discord_interactions import verify_key_decorator
+from collections import defaultdict
 import requests
 from datetime import datetime
 import re
 import time
+from decimal import Decimal
+import calendar
 
 # Variables
 steamapikey = os.environ['steamapikey']
@@ -18,6 +21,9 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(dynamodb_table_name)
 PERK_CACHE_TABLE = os.environ['PERK_CACHE_TABLE']
 perk_cache = dynamodb.Table(PERK_CACHE_TABLE)
+award_table_name = os.environ["award_table_name"]
+award_table = dynamodb.Table(award_table_name)
+
 
 # Class Definitions
 class shrineperk:
@@ -194,8 +200,116 @@ def scan_table_and_filter_latest_items(table_name):
     result = list(latest_items.values())
     return result
 
+def get_awards(award_table_name,steam_user_id):
+    award_table = dynamodb.Table(award_table_name)
+    key_condition_expression = Key('SteamUserID').eq(steam_user_id)
+    response = award_table.query(
+        KeyConditionExpression=key_condition_expression,
+        ScanIndexForward=False,
+        Limit=1  # Limit the result to only one item
+    )
+    if response['Items']:
+        return response['Items']
+    else:
+        today = datetime.now()
+        # Get current ISO 8601 datetime in string format
+        iso_date = today.isoformat()
+        item = [{
+            'SteamUserID': int(steam_user_id),
+            'awards':[]
+            }]
+        
+        return item
           
-# DBD Stat Description Dictionary
+def get_users(table):
+    # Query DynamoDB table for all SteamUserIDs
+    response = table.scan()
+
+    # Create a dictionary to store the most recent item for each SteamUserID
+    latest_items = defaultdict(dict)
+
+    # Iterate through items in the response
+    for item in response['Items']:
+        steam_user_id = item['SteamUserID']
+        last_updated = item['lastUpdated']
+        steam_user_name = item['SteamUserName']
+
+        # Check if the current item is more recent than the stored item for the SteamUserID
+        if last_updated > latest_items[steam_user_id].get('lastUpdated', '0'):
+            latest_items[steam_user_id] = item
+    return latest_items
+
+
+# Dictionaries
+award_descriptors={
+    "total_wins":"👟 The Escapee award for most escapes",
+    "DBD_BloodwebPoints":"🩸 The Blood Boy award for gaining the most Bloodpoints",
+    "DBD_CamperMaxScoreByCategory":"🥤:potato: The Mountain Dew and Doritos Leet Gamer award (most perfect games: 5k+ in all categories)",
+    'DBD_CamperSkulls':"👻 The Spooky Boy award for gaining the most season ranks",
+    'DBD_GeneratorPct_float':"🔧 The Handyman award for repairing the most generators",
+    "DBD_Chapter12_Camper_Stat2":"🐀 The Sewer Rat award for most times you escaped by crawling in the hatch (downed)",
+    "DBD_Chapter9_Camper_Stat1":":hook: The Deliverance award for the most times you unhooked yourself",
+    'DBD_EscapeKO':"🐌 The Slippery Slug award for the most times you escaped while crawling (downed)",
+    'DBD_HealPct_float':"🩹 The Bruce Cusamano award for most survivors healed",
+    "DBD_SkillCheckSuccess":"✅ The Completionist award for most successful skill checks",
+    "DBD_DLC9_Camper_Stat1":"🤬 The Lithe award for the most vaults that made a killer miss an attack",
+    "DBD_Camper8_Stat2":"🔒 The Fort Knox award for most vaults while in a chase",
+    "DBD_DLC7_Camper_Stat2":"⛩️ The Torii award for opening the most exit gates",
+    "DBD_Chapter15_Camper_Stat1":"🚑 The Amber Lamps award for recovering the most survivors from dying",
+    "DBD_DLC3_Camper_Stat1":"🧙‍♀️ The Witchhunter award for most hex totems cleansed",
+    "DBD_HitNearHook":"🛡️ The Lord Protector award for most protection hits for a survivor that was just unhooked",
+    'DBD_EscapeThroughHatch':"🕳️ The Lube Man award for most escapes through the hatch",
+    "DBD_DLC8_Camper_Stat1":"⚰️ The Undertaker award for escapes after getting downed at least once",
+    "DBD_FixSecondFloorGenerator_MapKny_Cottage":"☕ The Cozy Boy award for repairing the chalet generator and escaping from Ormond",
+    "runner_up":"🥈 Runner up"
+}
+
+emoji_descriptors={
+    "👟: Total Wins",
+    "🩸: Most Bloodpoints",
+    "🥤:potato:: Most perfect games: 5k+ in all categories)",
+    '👻: Most season ranks',
+    '🔧: Repairing the most generators',
+    "🐀: Most crawling (downed) hatch escapes",
+    ":hook:: Most self-unhooks",
+    '🐌: Most escapes while crawling (downed)',
+    '🩹: Most survivors healed',
+    "✅: Most successful skill checks",
+    "🤬: Most vaults that made a killer miss an attack",
+    "🔒: Most vaults while in a chase",
+    "⛩️: Most exit gates opened",
+    "🚑: Most survivors recovered from dying",
+    "🧙‍♀️: Most hex totems cleansed",
+    "🛡️: Most protection hits for a survivor that was just unhooked",
+    '🕳️: Most escapes through the hatch',
+    "⚰️: Most escapes after getting downed at least once",
+    "☕: Repairing the chalet generator and escaping from Ormond",
+    "🥈: Runner up"
+}
+
+award_emojis={
+    "total_wins":"👟",
+    "DBD_BloodwebPoints":"🩸",
+    "DBD_CamperMaxScoreByCategory":"🥤:potato:",
+    'DBD_CamperSkulls':"👻",
+    'DBD_GeneratorPct_float':"🔧",
+    "DBD_Chapter12_Camper_Stat2":"🐀",
+    "DBD_Chapter9_Camper_Stat1":":hook:",
+    'DBD_EscapeKO':"🐌",
+    'DBD_HealPct_float':"🩹",
+    "DBD_SkillCheckSuccess":"✅",
+    "DBD_DLC9_Camper_Stat1":"🤬",
+    "DBD_Camper8_Stat2":"🔒",
+    "DBD_DLC7_Camper_Stat2":"⛩️",
+    "DBD_Chapter15_Camper_Stat1":"🚑",
+    "DBD_DLC3_Camper_Stat1":"🧙‍♀️",
+    "DBD_HitNearHook":"🛡️",
+    'DBD_EscapeThroughHatch':"🕳️",
+    "DBD_DLC8_Camper_Stat1":"⚰️",
+    "DBD_FixSecondFloorGenerator_MapKny_Cottage":"☕",
+    "runner_up":"🥈"
+}
+
 descriptors = {
 'total_wins': 'The total number of times you\'ve escaped as a survivor',
 "DBD_HookedAndEscape": 'The number of times you\'ve escaped after unhooking yourself',
@@ -214,7 +328,7 @@ descriptors = {
 "DBD_DLC8_Camper_Stat1": "The number of times you\'ve escaped after getting downed once",
 "DBD_DLC9_Camper_Stat1": "Number of successful vaults that made the killer miss",
 "DBD_Chapter11_Camper_Stat1_float": "The number of survivors you\'ve healed while injured",
-"DBD_Chapter14_Camper_Stat1": "How mant Protection hits you\'ve taken while the killer was carrying a survivor",
+"DBD_Chapter14_Camper_Stat1": "How many Protection hits you\'ve taken while the killer was carrying a survivor",
 'DBD_HealPct_float': "The number of survivors you\'ve healed",
 "DBD_SkillCheckSuccess":'The number of skill checks you\'ve succeeded',
 "DBD_CamperMaxScoreByCategory": 'Survivor perfect games (5k+ Bloodpoints in all categories)',
@@ -737,7 +851,30 @@ def interact(raw_request):
                 message_content+=f"Steam Username: **{spooky_boy['SteamUserName']}** | SteamID: **{spooky_boy['SteamUserID']}** | Last Updated: *{spooky_boy['lastUpdated']}* \n"
             message_content+=f"\nExample command using a username: **/stats {spooky_boy['SteamUserName']}**"
             message_content+=f"\nExample command using a SteamID: **/stats {spooky_boy['SteamUserID']}**"
-
+        elif command_name == "leaderboard":
+            message_content=f"Current leaderboard standings are: \n"
+            users = get_users(table)
+            for user in users:
+                current_awards=get_awards(award_table_name,user)
+                if current_awards[0]['awards']:
+                    award_count=0
+                    runner_up_count=0
+                    emojis=""
+                    steam_user_name = get_steam_username(steamapikey, user)
+                    print(f"SteamUserId IS {user} | SteamUserName is {steam_user_name}")
+                    for award in current_awards[0]['awards']:
+                        award_name=award['name']
+                        if award['name']=="runner_up":
+                            runner_up_count+=award['value']
+                        else:
+                            award_count+=1
+                        this_emoji = award_emojis[award_name]
+                        emojis+=f"{this_emoji}: {award['value']} "
+                    message_content+=f"Award count for **{steam_user_name}** is **{award_count}**, runner up count is **{runner_up_count}**.\n**Awards**: **{emojis}**\n"
+                    print(message_content)
+        elif command_name == "awardinfo":
+            for descriptor in emoji_descriptors:
+                message_content+=f"{descriptor}\n"
 
         # Form the message to be sent to Discord
         response_data = {
