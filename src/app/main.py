@@ -108,15 +108,17 @@ def get_dbd_player_stats(api_key, user_id, stat_name):
             response = requests.get(url)
             data = response.json()
             if response.status_code == 200:
+                win_value = 0
                 for stat in data["playerstats"]["stats"]:
                     if stat["name"] == "DBD_Escape":
                         DBD_Escape = stat["value"]
+                        win_value += DBD_Escape
                     elif stat["name"] == "DBD_EscapeKO":
                         DBD_EscapeKO = stat["value"]
+                        win_value += DBD_EscapeKO
                     elif stat["name"] == "DBD_EscapeThroughHatch":
                         DBD_EscapeThroughHatch = stat["value"]
-                        
-                win_value = DBD_Escape + DBD_EscapeKO + DBD_EscapeThroughHatch
+                        win_value += DBD_EscapeThroughHatch
                 return win_value
                 
                 return None
@@ -501,12 +503,14 @@ def interact(raw_request):
             message_content += "**/perk** - Shows description for a given perk name. *Useful after getting perks from **/shrine***\nUsage: **/perk <Perk Name>**\n"
             message_content += "**/stats** - Shows overall DBD stats, ex: # of matches escaped & # of survivors sacrificed.\nUsage: **/stats <SteamID or username>** (example: */stats Mattschwabby*).\n"
             message_content += "**/survivorstats** - Shows DBD survivor stats, ex.: # of escapes, # of generators repaired.\nUsage: **/survivorstats <SteamID or username>** (example: */survivorstats 76561197968420961*).\n"
-            message_content += "**/survivormapstats** - Shows map-specific survivor statistics.\nUsage: **/survivormapstats <SteamID or username>** (example: */survivormapstats Mattschwabby*).\n"
+            message_content += "**/survivormapstats** - Shows map-specific survivor stats.\nUsage: **/survivormapstats <SteamID or username>** (example: */survivormapstats Mattschwabby*).\n"
             message_content += "**/killerstats** - Shows DBD Killer stats, ex: # of survivors hooked, # of survivors killed.\nUsage: **/killerstats <SteamID or username>** (example: */killerstats 76561197968420961*).\n"
             message_content += "**/killercharacterstats** - Shows killer-specific stats.\nUsage: **/killercharacterstats <SteamID or username>** (example: */killercharacterstats Mattschwabby*).\n"
-            message_content += "**/spookyboys** - Shows cached users including Steam Username & SteamID - updates hourly.\nUsage: **/spookyboys**\n"
+            message_content += "**/spookyboys** - Shows cached users including Username & SteamID - updates hourly.\nUsage: **/spookyboys**\n"
+            message_content += "**/leaderboard** - Shows weekly award leaderboard.\n"
+            message_content += "**/awards** - Shows awards available on weekly leaderboard.\n"
             message_content += "\nUsername is case sensitive. Username will only work **after you've sent at least one command with your SteamID**. A SteamID is a unique identifier that's 17 numbers long and **different than your username**. To look up your SteamID, open Steam, click your username in the upper right hand corner, click 'Account Details'. Your Steam ID is below your username.\n"
-            message_content += "**Important:** Your Steam Profile & Game details must be public to get your information from Steam. To set your profile to public, open your profile in Steam and click \"Edit Profile\", then set \"My profile\" & \"Game details\" to Public ([Click here for examples of how to look up your SteamID & set your profile to public](https://imgur.com/a/Xw3KbJ5))."
+            message_content += "**Important:** Your Steam Profile & Game details must be public to get information from Steam. ([Click here for examples of how to look up your SteamID & set your profile to public](https://imgur.com/a/Xw3KbJ5))."
         elif command_name == "steamtest":
             message_sender = data["id"]
             steamuserid = data["options"][0]["value"]
@@ -871,8 +875,9 @@ def interact(raw_request):
                         this_emoji = award_emojis[award_name]
                         emojis+=f"{this_emoji}: {award['value']} "
                     message_content+=f"Award count for **{steam_user_name}** is **{award_count}**, runner up count is **{runner_up_count}**.\n**Awards**: **{emojis}**\n"
-                    print(message_content)
-        elif command_name == "awardinfo":
+            message_content+="\nTo look up award descriptions, type **/awards**"
+        elif command_name == "awards":
+            message_content="**Current awards:** \n"
             for descriptor in emoji_descriptors:
                 message_content+=f"{descriptor}\n"
 

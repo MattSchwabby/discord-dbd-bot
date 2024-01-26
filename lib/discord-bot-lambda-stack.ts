@@ -8,7 +8,9 @@ import * as events from 'aws-cdk-lib/aws-events';
 
 const config = require('../config.json');
 const discordPublicKey = config.DISCORD_PUBLIC_KEY;
-const steamapikey = config.steamapikey
+const steamapikey = config.steamapikey;
+const discord_bot_token = config.DISCORD_BOT_TOKEN;
+const channel_id= config.channel_id;
 
 export class DiscordBotLambdaStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -74,8 +76,6 @@ export class DiscordBotLambdaStack extends cdk.Stack {
       },
       projectionType: dynamodb.ProjectionType.ALL,
     });
-
-
 
     // Define the main.py Lambda Function
     const dockerFunction = new lambda.DockerImageFunction(
@@ -151,6 +151,26 @@ export class DiscordBotLambdaStack extends cdk.Stack {
     });
     userCacheTable.grantReadWriteData(userCacheUpdater);
 
+    const awardUpdater = new lambda.DockerImageFunction(this, 'awardUpdater', {
+      code: lambda.DockerImageCode.fromImageAsset("./scripts/award_updater/"),
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(90),
+      architecture: lambda.Architecture.X86_64,
+      environment: {
+        DISCORD_PUBLIC_KEY: discordPublicKey,
+        USER_STAT_TABLE: userStatTable.tableName,
+        USER_CACHE_TABLE: userCacheTable.tableName,
+        award_table_name: awardTable.tableName,
+        steam_api_key: steamapikey,
+        DISCORD_BOT_TOKEN: discord_bot_token,
+        channel_id: channel_id
+        
+      },
+    });
+    userCacheTable.grantReadWriteData(awardUpdater);
+    userStatTable.grantReadWriteData(awardUpdater);
+    awardTable.grantReadWriteData(awardUpdater)
+
     // CloudWatch Event Rules
     const statTableEventRule = new events.Rule(this, 'statTableEventRule', {
       schedule: events.Schedule.cron({ minute: '0', hour: '10', weekDay: 'SUN-SAT' }), // Trigger every day at 2:00 AM Pacific Time
@@ -168,6 +188,11 @@ export class DiscordBotLambdaStack extends cdk.Stack {
       schedule: events.Schedule.cron({ minute: '0', hour: '*' }), // Trigger every hour
     });
     userCacheEventRule.addTarget(new targets.LambdaFunction(userCacheUpdater));
+
+    const awardUpdaterEventRule = new events.Rule(this, 'awardsEventRule', {
+      schedule: events.Schedule.cron({ minute: '0', hour: '4', weekDay: 'SUN' }), // Trigger every hour
+    })
+    awardUpdaterEventRule.addTarget(new targets.LambdaFunction(awardUpdater));
 
     new cdk.CfnOutput(this, "FunctionUrl", {
       value: functionUrl.url,

@@ -6,4 +6,4 @@ RUN pip install -r requirements.txt
 
 COPY app/* ${LAMBDA_TASK_ROOT}
 
-CMD [ "main.handler" ]
+CMD [ "award_updater.handler" ]

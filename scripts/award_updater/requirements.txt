@@ -5,3 +5,4 @@ discord-interactions
 boto3
 requests
 datetime
+discord

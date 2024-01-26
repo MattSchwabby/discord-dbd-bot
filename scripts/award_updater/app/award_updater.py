@@ -194,8 +194,8 @@ def handler(event, context):
     user_table = dynamodb.Table(user_table_name)
     stat_table = dynamodb.Table(stat_table_name)
     api_key = os.environ['steam_api_key']
-    channel_id=os.environ['channel_id']
-    award_table_name = os.environ['AWARD_TABLE']
+    channel_id=int(os.environ['channel_id'])
+    award_table_name = os.environ['award_table_name']
     award_table = dynamodb.Table(award_table_name)
     bot_token=os.environ['DISCORD_BOT_TOKEN']
     current_date = get_current_date()
@@ -289,11 +289,6 @@ def handler(event, context):
     second_placers=[]
     third_placers=[]
 
-    text_file_name = "survivor_stats.txt"
-    with open(text_file_name, 'w') as file:
-        for element in spooky_stats:
-            file.write(str(element) + '\n')
-
     message_content="👻👻👻 THIS WEEK'S SPOOKY AWARDS 👻👻👻\n\n"
     for survivor_stat in survivor_stats:
         filtered_data = [stat for stat in spooky_stats if stat["stat_name"]==survivor_stat]
@@ -341,14 +336,15 @@ def handler(event, context):
                 if not steam_id_exists_in_dynamo_results(runner_up_id_dynamo['SteamID'],dynamo_results):
                     dynamo_results = add_new_steam_user_dynamo_results(runner_up_id_dynamo['SteamID'],dynamo_results)
                 third_place_steam_name=get_steam_username(api_key, third_place_steamid)
-            if third_place_score in locals() and winning_difference==third_place_score:
-                message_content+=f"{this_description} is a THREE WAY TIE! **{winner_steam_user_name}** and **{second_place}** and **{third_place_steam_name}** tie with **{winning_difference}**\n"
-                # Add award for the winner to the Dynamo Result
-                add_award_to_steam_user_dynamo_results(winner_steam_id,stat,dynamo_results)
-                # Add award for tie 1
-                add_award_to_steam_user_dynamo_results(runner_up_steam_id,stat,dynamo_results)
-                # Add award for tie 2
-                add_award_to_steam_user_dynamo_results(third_place_steamid,stat,dynamo_results)
+            if third_place_score in locals() or third_place_score in globals():
+                if winning_difference==third_place_score:
+                    message_content+=f"{this_description} is a THREE WAY TIE! **{winner_steam_user_name}** and **{second_place}** and **{third_place_steam_name}** tie with **{winning_difference}**\n"
+                    # Add award for the winner to the Dynamo Result
+                    add_award_to_steam_user_dynamo_results(winner_steam_id,stat,dynamo_results)
+                    # Add award for tie 1
+                    add_award_to_steam_user_dynamo_results(runner_up_steam_id,stat,dynamo_results)
+                    # Add award for tie 2
+                    add_award_to_steam_user_dynamo_results(third_place_steamid,stat,dynamo_results)
             elif(winning_difference==second_place_score):
                 #print(f"Found a tie - winning_difference is {winning_difference}, second_place_score is {second_place_score}")
                 message_content+=f"{this_description} is a TIE! **{winner_steam_user_name}** and **{second_place}** tie with **{winning_difference}** | Runner up was **{third_place_steam_name}** with **{third_place_score}**\n"
