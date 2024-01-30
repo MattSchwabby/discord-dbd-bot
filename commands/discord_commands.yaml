@@ -1,6 +1,3 @@
-- name: hello
-  description: Say hello!
-
 - name: help
   description: Returns information about how to use spooky-bot.
 
@@ -55,8 +52,8 @@
       type: 3 # string
       required: true
 
-- name: spookyboys
-  description: Get the current list of cached usernames. Cache updates every hour.
+- name: users
+  description: Gets the current list of cached usernames. Cache updates every hour.
 
 - name: leaderboard
   description: Gets the current awards for each person in the user database.

@@ -1,6 +1,6 @@
 # DBD-Discord-Bot
 
-This repo contains a Discord bot written in Python that gets user stats and other information for the game Dead by Daylight from the [Steam API](https://steamcommunity.com/dev) and the [DBD Playerstats API](https://dbd.tricky.lol/).
+This repo contains a Discord bot written in Python that gets user stats and other information for the game Dead by Daylight from the [Steam API](https://steamcommunity.com/dev) and the [DBD Playerstats API](https://dbd.tricky.lol/), tracks the stats of users that have interacted with the bot in AWS, and operates a weekly leaderboard based on those stats.
 
 It is based on [`discord-bot-lambda`](https://github.com/pixegami/discord-bot-lambda) created by [Pixegami](https://github.com/pixegami/) on Github.
 
@@ -17,61 +17,98 @@ The bot's commands are outlined in the `discord_commands.yaml` file in the `/com
 /survivormapstats - Looks up map-specific survivor statistics. Usage: /survivormapstats <SteamID>.
 /killerstats - Looks up Dead by Daylight Killer statistics, like: # of survivors hooked, # of survivors killed. Usage: /killerstats <SteamID>.
 /killercharacterstats - Looks up character-specific stats as kille. Usage: /killercharacterstats <SteamID>
+/users - Gets the current list of cached usernames. Cache updates every hour.
+/leaderboard - Gets the current awards for each person in the user cache.
+/awards - Lists available rewards and descriptions.
 ```
-Steam requires a users SteamID to look up their player stats. No one can look up someone else's SteamID, so these commands only work if a user provides a SteamID with the request. Your SteamID is a unique identifier that's 17 numbers long and different than your username. To look up your SteamID, open Steam, click your username in the upper right hand side of the application, select `Account Details``. Your Steam ID is below your username.
+Steam requires a users SteamID to look up their player stats. No one can look up someone else's SteamID, so these commands only work if a user provides a SteamID with the request. If you've used the bit with a SteamID at least once, it will cache your Steam username and you can use that instead of your SteamID in subsequent commands.
+
+Your SteamID is a unique identifier that's 17 numbers long and different than your username. To look up your SteamID, open Steam, click your username in the upper right hand side of the application, select `Account Details``. Your Steam ID is below your username.
 
 Also, your Steam Profile & Game details must be set to public to get your information from the Steam API. To set your profile to public, open your profile in Steam and click `Edit Profile`, then set `My profile` and `Game details` to Public ([Click here for examples of how to look up your SteamID and set your profile to public](https://imgur.com/a/Xw3KbJ5))."
 
 Example of the /stats command:
 ![/stats](https://i.imgur.com/lUi2DwE.png)
 
+Example of the weekly leaderboard:
+![leaderboard](https://imgur.com/NHY8cRR)
+
 Example of the /shrine command:
 ![/shrine](https://i.imgur.com/VhQkOWN.png)
 
-#### Functionality In Development
+Example of the /leaderboard command:
+![/leaderboard](https://imgur.com/r31tkUO)
 
-You'll notice that the CDK app deploys some DynamoDB tables, cloudwatch event bridge rules, and two Lambda functions that don't appear to be related to the Discord functionality. This is for two reasons:
-1 - I'm working on an update to the /perk command which will allow users to search for perks using their name instead of their PerkID.
-2 - I'm working on functionality that will track the stats of each user that has interacted with the bot over time. I plan on building leaderboard-style functionality where the bot will post in a channel about who gained the most points in a particular stat or stats each week.
+Example of the /perk comannd:
+~[/perk](https://imgur.com/ocOA2LD)
 
-#### Using the Bot
+#### Leaderboards
 
-You can add the current version of the bot to your Discord server by [clicking this link](https://discord.com/api/oauth2/authorize?client_id=1065388537949720596&permissions=1085016635456&scope=bot) and then choosing your desired server in the drop down list.
+After a member of the Discord server has interacted with the bot using their SteamID at least once, the bot will start tracking that user's stats for the weekly leaderboard. Every Saturday at 8 PM Pacific, the bot will post the winners of various awards in a configured channel. The awards that are currently available are:
 
-![Adding the bot](https://i.imgur.com/NuevfNC.png)
+```
+🥈: Runner up
+🚑: Most survivors recovered from dying
+🧙‍♀️: Most hex totems cleansed
+🔒: Most vaults while in a chase
+🐌: Most escapes while crawling (downed)
+🐀: Most crawling (downed) hatch escapes
+🕳️: Most escapes through the hatch
+🥤:potato:: Most perfect games: 5k+ in all categories)
+🛡️: Most protection hits for a survivor that was just unhooked
+👻: Most season ranks
+:hook:: Most self-unhooks
+🤬: Most vaults that made a killer miss an attack
+✅: Most successful skill checks
+☕: Repairing the chalet generator and escaping from Ormond
+🩹: Most survivors healed
+⚰️: Most escapes after getting downed at least once
+🔧: Repairing the most generators
+🩸: Most Bloodpoints
+👟: Total Wins
+⛩️: Most exit gates opened
+```
 
-### Discord
+### Using this bot
 
-This bot uses the [Discord Interactions Endpoint](https://discord.com/developers/docs/interactions/application-commands). All interactions with the bot require a user to interact with the bot first. This bot cannot do anything without a user first interacting with it.
+To use this bot, you'll need a Discord application, an AWS account, and a Discord server where you have administrator privileges and can add bots to the server, and add bots to channels on that server. After copying this codebase and modifying some configuration values, all you need to do is deploy the code to your AWS account, then add the bot to your server. The leaderboard functionality is optional - if you want to use it, then add the bot to the channel you'd like them to post the weekly leaderboard results in.
 
-### Modifying the Bot
+#### Discord
 
-To modify this bot, you'll need a [Steam API key](https://steamcommunity.com/dev), your own [Discord Application](https://discord.com/developers/applications), and [an AWS account](https://aws.amazon.com).
+This bot uses the [Discord Interactions Endpoint](https://discord.com/developers/docs/interactions/application-commands). All of the slash commands (such as /shrine) require a user to first interact with the bot. The only functionality that happens automatically is the user cache update, and the weekly leaderboard post.
 
-Once you have all those, you'll need to clone this repo and create a file named `config.json` in the root of the project and populate it with a couple of configuration values:
+#### Setting up the Bot
+
+To set up this bot in your own Discord server, you'll need a [Steam API key](https://steamcommunity.com/dev), your own [Discord Application](https://discord.com/developers/applications), and [an AWS account](https://aws.amazon.com).
+
+Once you have all those, you'll need to clone this repo and create a file named `config.json` in the root of the project, and populate it with a couple of configuration values:
 ```
 {
     "DISCORD_PUBLIC_KEY": "DISCORD PUBLIC KEY GOES HERE", # This is the public key of your Discord application
-    "steamapikey": "YOUR STEAM API KEY GOES HERE" # Your Steam API key
+    "steamapikey": "YOUR STEAM API KEY GOES HERE" # Your Steam API key,
+    "DISCORD_BOT_TOKEN": "DISCORD BOT TOKEN GOES HERE" # Your discord bot token
+    "channel_id":"DISCORD CHANNEL ID GOES HERE" # The channel ID of the channel you'd like the bot to post leaderboards in (optional - you don't need to configure this if you don't want to use the leaderboard functionality).
 }
+
 ```
-### Registering the Commands with Discord
+#### Registering the Commands with Discord
 
 Next, you'll need to register your custom commands with Discord.
 
-Modify the `discord_commands.yaml` file to add your desired commands. Also install the dependencies in `requirements.txt` locally if you haven't already.
+Modify the `discord_commands.yaml` file to add your desired commands, or use the ones I've already configured. Also install the dependencies in `requirements.txt` locally if you haven't already.
 
 ```sh
 pip install -r commands/requirements.txt
 ```
 
-Then create a file named `discordsecrets.py` in the same directory as `register_commands.py` and populate it with the API key and application ID for your Discord bot:
+After that, create a file named `discordsecrets.py` in the same directory as `register_commands.py` and populate it with the API key and application ID for your Discord bot:
+
 ```
 TOKEN = "DISCORD APPLICATION TOKEN" # Your Discord Application token goes here
 APPLICATION_ID = "DISCORD APPLICATION ID" # Your Discord Application ID goes here
 
 ```
-After that, run  `register_commands.py` from the `commands` directory to register your commands with Discord.
+Then, run  `register_commands.py` from the `commands` directory to register your commands with Discord.
 
 ```sh
 cd commands
@@ -82,7 +119,6 @@ python register_commands.py
 
 The app is built with [Flask](https://flask.palletsprojects.com/) to create a HTTP server.
 The server is hosted on AWS Lambda Docker Container using [AWS CDK](https://aws.amazon.com/cdk/).
-
 
 #### Testing Locally
 
@@ -104,9 +140,13 @@ But this won't work with the `@verify_key_decorator`, because the request won't 
 
 So you'll need to comment out the decorator to test locally or update the example request with a valid token from your Lambda logs.
 
-### Deploying to AWS Lambda
+### Deploying to AWS
 
-Bootstrap the CDK if you haven't already.
+After copying this code and setting your configuration values, you'll need to deploy this bot to AWS. Since it's a CDK application you can do this with just a couple of commands.
+
+####
+
+ Bootstrap the CDK if you haven't already.
 
 ```sh
 cdk bootstrap

@@ -24,7 +24,6 @@ perk_cache = dynamodb.Table(PERK_CACHE_TABLE)
 award_table_name = os.environ["award_table_name"]
 award_table = dynamodb.Table(award_table_name)
 
-
 # Class Definitions
 class shrineperk:
     def __init__(self, name, description, bloodpointcost, shardcost):

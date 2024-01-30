@@ -184,8 +184,6 @@ def add_award_to_steam_user_dynamo_results(steam_id, award, data):
             break
     return data
 
-
-
 def handler(event, context):
     # Initialize DynamoDB client
     dynamodb = boto3.resource('dynamodb')
@@ -218,12 +216,6 @@ def handler(event, context):
         if last_updated > latest_items[steam_user_id].get('lastUpdated', '0'):
             latest_items[steam_user_id] = item
 
-    # Print or further process the latest items
-    '''
-    for steam_user_id, item in latest_items.items():
-        print(f"SteamUserID: {steam_user_id}, SteamUserName: {item['SteamUserName']}")
-
-    '''
     one_week_ago = (datetime.now() - timedelta(days=7)).isoformat()
     index_name = 'date-index'
     spooky_stats = []
@@ -367,7 +359,6 @@ def handler(event, context):
 
             #add_award(winner_steam_id, stat, AWARD_TABLE)
 
-
     for result in dynamo_results:
         steam_user_id=result['SteamID']
         awards=result['Awards']
@@ -414,41 +405,3 @@ def handler(event, context):
     # Run the bot with your token
     bot.run(bot_token)
     return "Executed bot script for awards"
-
-    '''
-    def get_latest_steam_userid_dynamo(table_name,steam_user_name):
-        table = dynamodb.Table(table_name)
-        key_condition_expression = Key('SteamUserName').eq(steam_user_name)
-        index_name = 'SteamUserNameIndex'
-        response = table.query(
-            IndexName=index_name,
-            KeyConditionExpression=key_condition_expression,
-            ScanIndexForward=False,
-            Limit=1  # Limit the result to only one item
-        )
-        if 'Items' in response and len(response['Items']) > 0:
-            # The latest item
-            latest_item = response['Items'][0]
-
-            # Retrieve the SteamUserName from the latest item
-            steam_user_id = latest_item.get('SteamUserID')
-
-        return steam_user_id
-
-    def get_perkid_by_name(table_name,perk_name):
-        perk_cache_table = dynamodb.Table(table_name)
-        if(perk_name=="Repressed Alliance"):
-            perk_name="Repressed&nbsp;Alliance"
-        key_condition_expression = Key('name').eq(perk_name)
-        index_name = 'PerkNameIndex'
-        response = perk_cache_table.query(
-            IndexName=index_name,
-            KeyConditionExpression=key_condition_expression,
-            Limit=1  # Limit the result to only one item
-        )
-        if 'Items' in response and len(response['Items']) > 0:
-            # The latest item
-            dynamo_response = response['Items'][0]
-
-            # Retrieve the SteamUserName from the latest item
-            perk_id = dynamo_response.get('perk_id')'''
